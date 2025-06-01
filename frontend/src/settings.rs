@@ -33,28 +33,50 @@ impl Settings {
         let mut servers = Vec::new();
         let mut servers_display = Vec::new();
 
+        info!("Initializing settings with args.servers: {:?}", args.servers);
+        info!("Domain: '{}'", args.domain);
+
         for server_spec in &args.servers {
+            info!("Processing server_spec: '{}'", server_spec);
             if let Some(angle_pos) = server_spec.find('<') {
                 // Display name format: "Display<actual>"
-                let display = server_spec[..angle_pos].to_string();
+                let display_name = server_spec[..angle_pos].to_string();
                 let actual = server_spec[angle_pos + 1..server_spec.len() - 1].to_string();
-                servers_display.push(display);
+                info!("Found <> format: display_name='{}', actual='{}'", display_name, actual);
+                servers_display.push(display_name);
                 servers.push(actual);
             } else {
                 // Plain server name - store the original as display name
+                info!("Plain server name: '{}'", server_spec);
                 servers_display.push(server_spec.clone());
                 servers.push(server_spec.clone());
             }
         }
 
+        info!("Before domain processing - servers: {:?}", servers);
+        info!("Before domain processing - servers_display: {:?}", servers_display);
+
         // Build full server names with domain (only modify servers, not servers_display)
         if !args.domain.is_empty() {
             for i in 0..servers.len() {
+                let original = servers[i].clone();
                 if !servers[i].contains('.') && !servers[i].parse::<std::net::IpAddr>().is_ok() {
                     servers[i] = format!("{}.{}", servers[i], args.domain);
+                    info!("Added domain to servers[{}]: '{}' -> '{}'", i, original, servers[i]);
+                } else {
+                    info!("Skipped domain for servers[{}]: '{}' (already has domain or is IP)", i, original);
+                    // If the server name already contains the domain, remove it from display name
+                    if servers[i].ends_with(&format!(".{}", args.domain)) {
+                        let without_domain = servers[i].strip_suffix(&format!(".{}", args.domain)).unwrap_or(&servers[i]);
+                        servers_display[i] = without_domain.to_string();
+                        info!("Removed domain from servers_display[{}]: '{}' -> '{}'", i, original, servers_display[i]);
+                    }
                 }
             }
         }
+
+        info!("After domain processing - servers: {:?}", servers);
+        info!("After domain processing - servers_display: {:?}", servers_display);
 
         let settings = Settings {
             servers,

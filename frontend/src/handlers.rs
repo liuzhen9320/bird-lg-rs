@@ -65,6 +65,18 @@ pub async fn bird_route_from_protocol_all(Path((servers, protocol)): Path<(Strin
     handle_bird_command(servers, "route_from_protocol_all", command).await
 }
 
+// Bird route from protocol primary handler
+pub async fn bird_route_from_protocol_primary(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+    let command = format!("show route protocol {} primary", protocol);
+    handle_bird_command(servers, "route_from_protocol_primary", command).await
+}
+
+// Bird route from protocol all primary handler
+pub async fn bird_route_from_protocol_all_primary(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+    let command = format!("show route protocol {} all primary", protocol);
+    handle_bird_command(servers, "route_from_protocol_all_primary", command).await
+}
+
 // Bird route filtered from protocol handler
 pub async fn bird_route_filtered_from_protocol(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
     let command = format!("show route filtered protocol {}", protocol);
@@ -89,10 +101,28 @@ pub async fn bird_route_from_origin_all(Path((servers, asn)): Path<(String, Stri
     handle_bird_command(servers, "route_from_origin_all", command).await
 }
 
+// Bird route from origin primary handler
+pub async fn bird_route_from_origin_primary(Path((servers, asn)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+    let command = format!("show route where bgp_path.last = {} primary", asn);
+    handle_bird_command(servers, "route_from_origin_primary", command).await
+}
+
+// Bird route from origin all primary handler
+pub async fn bird_route_from_origin_all_primary(Path((servers, asn)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+    let command = format!("show route where bgp_path.last = {} all primary", asn);
+    handle_bird_command(servers, "route_from_origin_all_primary", command).await
+}
+
 // Bird generic command handler
 pub async fn bird_generic(Path((servers, command)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
     let command = format!("show {}", command);
     handle_bird_command(servers, "generic", command).await
+}
+
+// Bird route generic handler
+pub async fn bird_route_generic(Path((servers, command)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+    let command = format!("show route {}", command);
+    handle_bird_command(servers, "route_generic", command).await
 }
 
 // BGP Map handlers
@@ -304,6 +334,17 @@ fn get_options() -> Vec<(String, String)> {
         ("route_all".to_string(), "Route (all)".to_string()),
         ("route_where".to_string(), "Route where".to_string()),
         ("route_where_all".to_string(), "Route where (all)".to_string()),
+        ("route_from_protocol".to_string(), "Route from protocol".to_string()),
+        ("route_from_protocol_all".to_string(), "Route from protocol (all)".to_string()),
+        ("route_from_protocol_primary".to_string(), "Route from protocol (primary)".to_string()),
+        ("route_from_protocol_all_primary".to_string(), "Route from protocol (all primary)".to_string()),
+        ("route_filtered_from_protocol".to_string(), "Route filtered from protocol".to_string()),
+        ("route_filtered_from_protocol_all".to_string(), "Route filtered from protocol (all)".to_string()),
+        ("route_from_origin".to_string(), "Route from origin".to_string()),
+        ("route_from_origin_all".to_string(), "Route from origin (all)".to_string()),
+        ("route_from_origin_primary".to_string(), "Route from origin (primary)".to_string()),
+        ("route_from_origin_all_primary".to_string(), "Route from origin (all primary)".to_string()),
+        ("route_generic".to_string(), "Route generic".to_string()),
         ("route_bgpmap".to_string(), "Route BGP map".to_string()),
         ("route_where_bgpmap".to_string(), "Route where BGP map".to_string()),
         ("traceroute".to_string(), "Traceroute".to_string()),
