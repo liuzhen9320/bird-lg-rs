@@ -11,7 +11,10 @@ use base64::{Engine as _, engine::general_purpose};
 // Redirect to summary page
 pub async fn redirect_to_summary() -> impl IntoResponse {
     let settings = Settings::global();
-    let all_servers = settings.all_servers_string();
+    let all_servers = settings.all_servers_display_string();
+    tracing::info!("Redirecting to summary page with servers: {}", all_servers);
+    tracing::info!("Settings servers: {:?}", settings.servers);
+    tracing::info!("Settings servers_display: {:?}", settings.servers_display);
     Redirect::permanent(&format!("/summary/{}", all_servers))
 }
 
@@ -105,8 +108,8 @@ pub async fn bird_route_where_bgpmap(Path((servers, prefix)): Path<(String, Stri
 
 // Traceroute handler
 pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
-    let server_list: Vec<String> = servers.split('+').map(|s| s.to_string()).collect();
     let settings = Settings::global();
+    let server_list = settings.resolve_servers_from_display_names(&servers);
     
     let mut content = String::new();
     
@@ -175,8 +178,8 @@ pub async fn whois(Path(target): Path<String>) -> Result<impl IntoResponse, Resp
 
 // Helper function to handle bird commands
 async fn handle_bird_command(servers: String, option: &str, command: String) -> Result<impl IntoResponse, Response> {
-    let server_list: Vec<String> = servers.split('+').map(|s| s.to_string()).collect();
     let settings = Settings::global();
+    let server_list = settings.resolve_servers_from_display_names(&servers);
     
     let mut content = String::new();
     
@@ -218,7 +221,8 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
 
 // Helper function to handle BGP map commands
 async fn handle_bgpmap_command(servers: String, command: String, target: String) -> Result<impl IntoResponse, Response> {
-    let server_list: Vec<String> = servers.split('+').map(|s| s.to_string()).collect();
+    let settings = Settings::global();
+    let server_list = settings.resolve_servers_from_display_names(&servers);
     
     let mut responses = Vec::new();
     for server in &server_list {
@@ -258,9 +262,9 @@ fn build_page_context(option: &str, servers: &str, command: &str, content: &str)
         brand: settings.navbar_brand.clone(),
         brand_url: settings.navbar_brand_url.clone(),
         all_server_title: settings.navbar_all_server.clone(),
-        all_servers_url: settings.all_servers_string(),
-        all_servers_link_active: servers == settings.all_servers_string(),
-        servers: settings.servers.clone(),
+        all_servers_url: settings.all_servers_display_string(),
+        all_servers_link_active: servers == settings.all_servers_display_string(),
+        servers: settings.servers_display.clone(),
         servers_display: settings.servers_display.clone(),
         url_option: option.to_string(),
         url_server: servers.to_string(),
@@ -279,12 +283,12 @@ fn build_whois_page_context(target: &str, content: &str) -> PageContext {
         brand: settings.navbar_brand.clone(),
         brand_url: settings.navbar_brand_url.clone(),
         all_server_title: settings.navbar_all_server.clone(),
-        all_servers_url: settings.all_servers_string(),
+        all_servers_url: settings.all_servers_display_string(),
         all_servers_link_active: false,
-        servers: settings.servers.clone(),
+        servers: settings.servers_display.clone(),
         servers_display: settings.servers_display.clone(),
         url_option: "whois".to_string(),
-        url_server: settings.all_servers_string(),
+        url_server: settings.all_servers_display_string(),
         url_command: target.to_string(),
         options: get_options(),
         content: content.to_string(),

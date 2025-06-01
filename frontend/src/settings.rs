@@ -41,17 +41,17 @@ impl Settings {
                 servers_display.push(display);
                 servers.push(actual);
             } else {
-                // Plain server name
+                // Plain server name - store the original as display name
                 servers_display.push(server_spec.clone());
                 servers.push(server_spec.clone());
             }
         }
 
-        // Build full server names with domain
+        // Build full server names with domain (only modify servers, not servers_display)
         if !args.domain.is_empty() {
-            for server in &mut servers {
-                if !server.contains('.') && !server.parse::<std::net::IpAddr>().is_ok() {
-                    *server = format!("{}.{}", server, args.domain);
+            for i in 0..servers.len() {
+                if !servers[i].contains('.') && !servers[i].parse::<std::net::IpAddr>().is_ok() {
+                    servers[i] = format!("{}.{}", servers[i], args.domain);
                 }
             }
         }
@@ -98,5 +98,37 @@ impl Settings {
 
     pub fn all_servers_string(&self) -> String {
         self.servers.join("+")
+    }
+
+    pub fn all_servers_display_string(&self) -> String {
+        self.servers_display.join("+")
+    }
+
+    pub fn get_server_from_display_name(&self, display_name: &str) -> Option<String> {
+        for (i, display) in self.servers_display.iter().enumerate() {
+            if display == display_name {
+                return Some(self.servers[i].clone());
+            }
+        }
+        None
+    }
+
+    pub fn resolve_servers_from_display_names(&self, display_names: &str) -> Vec<String> {
+        display_names
+            .split('+')
+            .filter_map(|display_name| {
+                // First try to find by display name
+                if let Some(server) = self.get_server_from_display_name(display_name) {
+                    Some(server)
+                } else {
+                    // If not found by display name, check if it's already a server name
+                    if self.servers.contains(&display_name.to_string()) {
+                        Some(display_name.to_string())
+                    } else {
+                        None
+                    }
+                }
+            })
+            .collect()
     }
 } 

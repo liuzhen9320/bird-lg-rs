@@ -3,10 +3,11 @@ use axum::{
     response::{IntoResponse, Json},
 };
 use serde_json::json;
-use crate::{proxy_client, whois};
+use crate::{proxy_client, whois, settings::Settings};
 
 pub async fn bird_api(Path((servers, command)): Path<(String, String)>) -> impl IntoResponse {
-    let server_list: Vec<String> = servers.split('+').map(|s| s.to_string()).collect();
+    let settings = Settings::global();
+    let server_list = settings.resolve_servers_from_display_names(&servers);
     let mut results = Vec::new();
     
     for server in &server_list {
@@ -36,7 +37,8 @@ pub async fn bird_api(Path((servers, command)): Path<(String, String)>) -> impl 
 }
 
 pub async fn traceroute_api(Path((servers, target)): Path<(String, String)>) -> impl IntoResponse {
-    let server_list: Vec<String> = servers.split('+').map(|s| s.to_string()).collect();
+    let settings = Settings::global();
+    let server_list = settings.resolve_servers_from_display_names(&servers);
     let mut results = Vec::new();
     
     for server in &server_list {
