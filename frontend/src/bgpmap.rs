@@ -18,10 +18,12 @@ impl RouteAttrs {
         self.attrs.insert(key, value);
     }
 
+    #[allow(dead_code)]
     pub fn get(&self, key: &str) -> Option<&String> {
         self.attrs.get(key)
     }
 
+    #[allow(dead_code)]
     pub fn len(&self) -> usize {
         self.attrs.len()
     }
@@ -85,7 +87,7 @@ impl RouteGraph {
         }
     }
 
-    pub fn add_point(&mut self, name: String, perform_lookup: bool, mut attrs: RouteAttrs) {
+    pub fn add_point(&mut self, name: String, perform_lookup: bool, attrs: RouteAttrs) {
         let mut point = self.points.get(&name).cloned().unwrap_or_else(RoutePoint::new);
         point.perform_lookup = perform_lookup;
         
@@ -97,7 +99,7 @@ impl RouteGraph {
         self.points.insert(name, point);
     }
 
-    pub fn add_edge(&mut self, src: String, dest: String, label: String, mut attrs: RouteAttrs) {
+    pub fn add_edge(&mut self, src: String, dest: String, label: String, attrs: RouteAttrs) {
         let key = RouteEdgeKey { src, dest };
         let mut edge = self.edges.get(&key).cloned().unwrap_or_else(RouteEdgeValue::new);
         

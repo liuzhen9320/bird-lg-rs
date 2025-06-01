@@ -223,6 +223,7 @@ async fn build_router() -> Router {
         
         // Telegram bot webhook (if enabled)
         .route("/telegram", get(telegram::telegram_webhook).post(telegram::telegram_webhook))
+        .route("/telegram/*servers", get(telegram::telegram_webhook).post(telegram::telegram_webhook))
         
         // Static assets
         .route("/static/*path", get(static_files::serve_static))
