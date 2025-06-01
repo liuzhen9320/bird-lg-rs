@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<link rel="icon" href="/favicon.ico" type="image/x-icon" />
+<meta http-equiv="Content-Type" content="text/html;charset=UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="renderer" content="webkit">
+<title>{{ title }}</title>
+<link rel="stylesheet" href="/static/jsdelivr/npm/bootstrap@4.5.1/dist/css/bootstrap.min.css" crossorigin="anonymous">
+<style>
+.navbar-nav {
+	flex-wrap: wrap;
+}
+@media (min-width: 768px) {
+	.navbar form {
+		min-width: 400px;
+	}
+	.nav-link {
+		padding: 0.2rem 0.5rem !important;
+	}
+}
+</style>
+<meta name="robots" content="noindex, nofollow">
+</head>
+<body>
+
+<nav class="navbar navbar-expand-lg navbar-light bg-light">
+	<a class="navbar-brand" href="{{ brand_url }}">{{ brand }}</a>
+	<button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+		<span class="navbar-toggler-icon"></span>
+	</button>
+
+	<div class="collapse navbar-collapse" id="navbarSupportedContent">
+		<ul class="navbar-nav mr-auto">
+			<li class="nav-item">
+				<a class="nav-link{% if all_servers_link_active %} active{% endif %}"
+					href="/summary/{{ all_servers_url }}/"> {{ all_server_title }} </a>
+			</li>
+			{% for server in servers %}
+			<li class="nav-item">
+				<a class="nav-link{% if url_server == server %} active{% endif %}"
+					href="/summary/{{ server }}/">{{ servers_display[loop.index0] }}</a>
+			</li>
+			{% endfor %}
+		</ul>
+		<form name="goto" class="form-inline" action="javascript:goto();">
+			<div class="input-group">
+				<select name="action" class="form-control">
+					{% for option in options %}
+					<option value="{{ option.0 }}"{% if option.0 == url_option %} selected{% endif %}>{{ option.1 }}</option>
+					{% endfor %}
+				</select>
+				<input name="server" class="d-none" value="{{ url_server }}">
+				<input name="target" class="form-control" placeholder="Target" aria-label="Target" value="{{ url_command }}">
+				<div class="input-group-append">
+					<button class="btn btn-outline-success" type="submit">&raquo;</button>
+				</div>
+			</div>
+		</form>
+	</div>
+</nav>
+
+<div class="container">
+	{{ content | safe }}
+</div>
+
+<script src="/static/jsdelivr/npm/jquery@3.5.1/dist/jquery.min.js" crossorigin="anonymous"></script>
+<script src="/static/jsdelivr/npm/bootstrap@4.5.1/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
+<script src="/static/sortTable.js"></script>
+
+<script>
+function goto() {
+	let action = $('[name="action"]').val();
+	let server = $('[name="server"]').val();
+	let target = $('[name="target"]').val();
+	let url = "";
+
+	if (action == "whois") {
+		url = "/" + action + "/" + target;
+	} else if (action == "summary") {
+		url = "/" + action + "/" + server + "/";
+	} else {
+		url = "/" + action + "/" + server + "/" + target;
+	}
+
+	window.location.href = url;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,32 @@
+[workspace]
+members = ["proxy", "frontend"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["Bird-LG-RS"]
+license = "GPL-3.0"
+description = "Bird Looking Glass implementation in Rust"
+
+[workspace.dependencies]
+tokio = { version = "1.0", features = ["full"] }
+axum = "0.7"
+axum-extra = "0.9"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+anyhow = "1.0"
+clap = { version = "4.0", features = ["derive"] }
+config = "0.14"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tera = "1.19"
+url = "2.0"
+regex = "1.0"
+reqwest = { version = "0.11", features = ["json"] }
+base64 = "0.22"
+ipnet = "2.9"
+html-escape = "0.2" 

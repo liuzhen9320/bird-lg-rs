@@ -1,0 +1,104 @@
+# Rust
+/target/
+**/*.rs.bk
+*.pdb
+Cargo.lock
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+node_modules/
+
+# Optional npm cache directory
+.npm
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# dotenv environment variables file
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Build artifacts
+dist/
+build/
+
+# Docker
+.dockerignore
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Temporary files
+tmp/
+temp/
+
+# Editor temporary files
+*.tmp
+*.temp
+
+# Linux socket files
+*.sock
+
+# Config files that might contain sensitive data
+config.yaml
+config.json
+settings.toml
+
+# Bird-lg specific
+bird-lg-go/
+bird-lgproxy-go
+
+# Binary outputs
+bird-lg-rs
+bird-lgproxy-rs
+/bin/
+
+# Static assets output (if generated)
+/frontend/assets/static/compiled/
+
+# Test outputs
+test-results/
+coverage-reports/

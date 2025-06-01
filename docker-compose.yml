@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  bird-lg-frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - BIRDLG_SERVERS=server1,server2
+      - BIRDLG_DOMAIN=example.com
+      - BIRDLG_PROXY_PORT=8000
+    depends_on:
+      - bird-lg-proxy
+
+  bird-lg-proxy:
+    build:
+      context: .
+      dockerfile: proxy/Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - BIRD_SOCKET=/var/run/bird/bird.ctl
+      - BIRDLG_PROXY_PORT=8000
+    volumes:
+      - /var/run/bird/bird.ctl:/var/run/bird/bird.ctl:ro 
