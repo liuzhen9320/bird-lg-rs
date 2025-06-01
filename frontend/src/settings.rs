@@ -7,20 +7,28 @@ use tracing::info;
 pub struct Settings {
     pub servers: Vec<String>,
     pub servers_display: Vec<String>,
+    #[allow(dead_code)]
     pub domain: String,
     pub proxy_port: u16,
     pub whois_server: String,
     pub listen: String,
+    #[allow(dead_code)]
     pub dns_interface: String,
+    #[allow(dead_code)]
     pub net_specific_mode: String,
     pub title_brand: String,
     pub navbar_brand: String,
     pub navbar_brand_url: String,
     pub navbar_all_server: String,
+    #[allow(dead_code)]
     pub navbar_all_url: String,
+    #[allow(dead_code)]
     pub bgpmap_info: String,
+    #[allow(dead_code)]
     pub telegram_bot_name: String,
+    #[allow(dead_code)]
     pub protocol_filter: Vec<String>,
+    #[allow(dead_code)]
     pub name_filter: String,
     pub timeout: u64,
 }
@@ -118,6 +126,7 @@ impl Settings {
         server.to_string()
     }
 
+    #[allow(dead_code)]
     pub fn all_servers_string(&self) -> String {
         self.servers.join("+")
     }
