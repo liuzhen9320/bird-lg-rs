@@ -1,0 +1,21 @@
+{% set server_name = server_name | urlencode %}
+
+<table class="table table-striped table-bordered table-sm sortable">
+  <thead>
+{% for header in headers %}
+    <th scope="col">{{ header | escape }}</th>
+{% endfor %}
+  </thead>
+  <tbody>
+{% for row in rows %}
+    <tr class="table-{{ row.mapped_state }}">
+      <td><a href="/detail/{{ server_name | urlencode }}/{{ row.name | urlencode }}">{{ row.name | escape }}</a></td>
+      <td>{{ row.proto | escape }}</td>
+      <td>{{ row.table | escape }}</td>
+      <td>{{ row.state | escape }}</td>
+      <td>{{ row.since | escape }}</td>
+      <td>{{ row.info | escape }}</td>
+    </tr>
+{% endfor %}
+  </tbody>
+</table> 

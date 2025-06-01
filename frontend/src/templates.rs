@@ -41,6 +41,24 @@ pub struct BgpmapContext {
     pub result: String,
 }
 
+#[derive(Serialize)]
+pub struct SummaryContext {
+    pub server_name: String,
+    pub headers: Vec<String>,
+    pub rows: Vec<SummaryRowData>,
+}
+
+#[derive(Serialize)]
+pub struct SummaryRowData {
+    pub name: String,
+    pub proto: String,
+    pub table: String,
+    pub state: String,
+    pub mapped_state: String,
+    pub since: String,
+    pub info: String,
+}
+
 pub fn init() -> Result<()> {
     let mut tera = Tera::new("frontend/assets/templates/**/*")?;
     tera.autoescape_on(vec!["html"]);
@@ -74,5 +92,11 @@ pub fn render_whois(context: &WhoisContext) -> Result<String> {
 pub fn render_bgpmap(context: &BgpmapContext) -> Result<String> {
     let tera = get_templates();
     let rendered = tera.render("bgpmap.html", &Context::from_serialize(context)?)?;
+    Ok(rendered)
+}
+
+pub fn render_summary(context: &SummaryContext) -> Result<String> {
+    let tera = get_templates();
+    let rendered = tera.render("summary.html", &Context::from_serialize(context)?)?;
     Ok(rendered)
 } 

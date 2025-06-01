@@ -30,6 +30,7 @@ use hyper::{body::Incoming, Request};
 mod settings;
 mod handlers;
 mod templates;
+mod summary_parser;
 mod proxy_client;
 mod bgpmap;
 mod whois;

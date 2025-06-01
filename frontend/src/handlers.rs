@@ -5,7 +5,7 @@ use axum::{
 };
 use crate::settings::Settings;
 use crate::templates::{PageContext, BirdContext, WhoisContext, BgpmapContext};
-use crate::{proxy_client, whois, bgpmap, templates};
+use crate::{proxy_client, whois, bgpmap, templates, summary_parser};
 use base64::{Engine as _, engine::general_purpose};
 
 // Redirect to summary page
@@ -308,9 +308,21 @@ fn get_options() -> Vec<(String, String)> {
     ]
 }
 
-// Format summary table (simplified version)
-fn format_summary_table(result: &str, _server: &str) -> String {
-    // This is a simplified version - the full implementation would parse
-    // the BIRD protocol output and create an HTML table
-    format!("<pre>{}</pre>", html_escape::encode_text(result))
+// Format summary table using the new parser
+fn format_summary_table(result: &str, server: &str) -> String {
+    let settings = Settings::global();
+    let display_name = settings.get_server_display_name(server);
+    
+    match summary_parser::parse_summary(result, display_name) {
+        Ok(summary_context) => {
+            match templates::render_summary(&summary_context) {
+                Ok(rendered) => rendered,
+                Err(e) => format!("<p>Template error: {}</p>", e),
+            }
+        }
+        Err(_) => {
+            // Fallback to plain text if parsing fails
+            format!("<pre>{}</pre>", html_escape::encode_text(result))
+        }
+    }
 } 
