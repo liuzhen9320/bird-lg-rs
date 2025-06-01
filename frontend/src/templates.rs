@@ -2,6 +2,15 @@ use anyhow::Result;
 use serde::Serialize;
 use std::sync::OnceLock;
 use tera::{Context, Tera};
+use rust_embed::RustEmbed;
+
+#[derive(RustEmbed)]
+#[folder = "assets/templates"]
+struct Templates;
+
+#[derive(RustEmbed)]
+#[folder = "assets/static"]
+pub struct StaticAssets;
 
 static TEMPLATES: OnceLock<Tera> = OnceLock::new();
 
@@ -60,7 +69,15 @@ pub struct SummaryRowData {
 }
 
 pub fn init() -> Result<()> {
-    let mut tera = Tera::new("frontend/assets/templates/**/*")?;
+    let mut tera = Tera::default();
+    
+    // Load embedded templates
+    for file in Templates::iter() {
+        let content = Templates::get(&file).unwrap();
+        let content_str = std::str::from_utf8(content.data.as_ref())?;
+        tera.add_raw_template(&file, content_str)?;
+    }
+    
     tera.autoescape_on(vec!["html"]);
     
     TEMPLATES.set(tera).map_err(|_| anyhow::anyhow!("Templates already initialized"))?;

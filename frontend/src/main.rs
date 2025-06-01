@@ -6,7 +6,6 @@ use clap::Parser;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
 use tower_http::{
-    services::ServeDir,
     trace::TraceLayer,
 };
 use tracing::info;
@@ -36,6 +35,7 @@ mod bgpmap;
 mod whois;
 mod api;
 mod telegram;
+mod static_files;
 
 use settings::Settings;
 
@@ -159,6 +159,10 @@ async fn build_router() -> Router {
         // Main page redirects to all servers summary
         .route("/", get(handlers::redirect_to_summary))
         
+        // Summary route without servers - redirect to all servers
+        .route("/summary", get(handlers::redirect_to_summary))
+        .route("/summary/", get(handlers::redirect_to_summary))
+        
         // Bird protocol queries
         .route("/summary/:servers", get(handlers::bird_summary))
         .route("/detail/:servers/:protocol", get(handlers::bird_detail))
@@ -191,7 +195,7 @@ async fn build_router() -> Router {
         .route("/telegram", get(telegram::telegram_webhook).post(telegram::telegram_webhook))
         
         // Static assets
-        .nest_service("/static", ServeDir::new("assets/static"))
+        .route("/static/*path", get(static_files::serve_static))
         
         .layer(
             ServiceBuilder::new()
