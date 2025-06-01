@@ -34,12 +34,12 @@ ARG SERVICE
 RUN echo "Building service: $SERVICE" && \
     if [ "$SERVICE" = "proxy" ]; then \
         echo "Building proxy..." && \
-        cargo build --release --bin bird-lgproxy-rs -p proxy && \
+        cargo build --release --bin bird-lgproxy-rs -p bird-lgproxy-rs && \
         ls -la target/release/ && \
         echo "Proxy build completed"; \
     elif [ "$SERVICE" = "frontend" ]; then \
         echo "Building frontend..." && \
-        cargo build --release --bin bird-lg-rs -p frontend && \
+        cargo build --release --bin bird-lg-rs -p bird-lg-rs && \
         ls -la target/release/ && \
         echo "Frontend build completed"; \
     else \
