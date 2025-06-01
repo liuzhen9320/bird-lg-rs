@@ -34,12 +34,16 @@ ARG SERVICE
 RUN echo "Building service: $SERVICE" && \
     if [ "$SERVICE" = "proxy" ]; then \
         echo "Building proxy..." && \
+        RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
         cargo build --release --bin bird-lgproxy-rs -p bird-lgproxy-rs && \
+        strip target/release/bird-lgproxy-rs 2>/dev/null || true && \
         ls -la target/release/ && \
         echo "Proxy build completed"; \
     elif [ "$SERVICE" = "frontend" ]; then \
         echo "Building frontend..." && \
+        RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
         cargo build --release --bin bird-lg-rs -p bird-lg-rs && \
+        strip target/release/bird-lg-rs 2>/dev/null || true && \
         ls -la target/release/ && \
         echo "Frontend build completed"; \
     else \
@@ -51,11 +55,11 @@ FROM alpine:3.20 AS proxy-runtime
 
 # Install runtime dependencies for proxy
 RUN apk add --no-cache \
-    mtr \
     iputils \
     bind-tools \
     ca-certificates \
-    traceroute
+    traceroute \
+    && rm -rf /var/cache/apk/*
 
 # Copy the proxy binary
 COPY --from=builder /app/target/release/bird-lgproxy-rs /usr/local/bin/bird-lgproxy-rs
@@ -75,7 +79,8 @@ FROM alpine:3.20 AS frontend-runtime
 
 # Install runtime dependencies for frontend
 RUN apk add --no-cache \
-    ca-certificates
+    ca-certificates \
+    && rm -rf /var/cache/apk/*
 
 # Copy the frontend binary
 COPY --from=builder /app/target/release/bird-lg-rs /usr/local/bin/bird-lg-rs
