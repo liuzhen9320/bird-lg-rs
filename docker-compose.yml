@@ -4,7 +4,10 @@ services:
   bird-lg-frontend:
     build:
       context: .
-      dockerfile: frontend/Dockerfile
+      dockerfile: Dockerfile
+      target: frontend-runtime
+      args:
+        SERVICE: frontend
     ports:
       - "5000:5000"
     environment:
@@ -17,7 +20,10 @@ services:
   bird-lg-proxy:
     build:
       context: .
-      dockerfile: proxy/Dockerfile
+      dockerfile: Dockerfile
+      target: proxy-runtime
+      args:
+        SERVICE: proxy
     ports:
       - "8000:8000"
     environment:
