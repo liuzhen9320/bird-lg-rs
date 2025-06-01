@@ -37,8 +37,10 @@ coverage/
 # nyc test coverage
 .nyc_output
 
-# Dependency directories
+# Dependency directories - but NOT frontend static assets
 node_modules/
+# Allow frontend static assets
+!frontend/assets/static/static/jsdelivr/npm/
 
 # Optional npm cache directory
 .npm
@@ -96,8 +98,10 @@ bird-lg-rs
 bird-lgproxy-rs
 /bin/
 
-# Static assets output (if generated)
+# Static assets output (if generated) - but keep committed static assets
 /frontend/assets/static/compiled/
+# Keep the jsdelivr npm packages
+!frontend/assets/static/static/jsdelivr/
 
 # Test outputs
 test-results/

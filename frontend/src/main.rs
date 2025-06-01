@@ -19,7 +19,13 @@ use std::{
 };
 
 #[cfg(unix)]
-use tokio::net::UnixListener;
+use tokio::net::{UnixListener, UnixStream};
+
+#[cfg(unix)]
+use tower::Service;
+
+#[cfg(unix)]
+use hyper::{body::Incoming, Request};
 
 mod settings;
 mod handlers;
@@ -120,9 +126,30 @@ async fn create_unix_listener(socket_path: &str) -> anyhow::Result<()> {
     info!("Server started on Unix socket: {}", socket_path);
     
     let app = build_router().await;
-    axum::serve(listener, app).await?;
     
-    Ok(())
+    // Manually handle Unix socket connections
+    loop {
+        match listener.accept().await {
+            Ok((stream, _)) => {
+                let app_clone = app.clone();
+                tokio::spawn(async move {
+                    let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
+                        app_clone.clone().call(request)
+                    });
+                    
+                    if let Err(err) = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
+                        .serve_connection(hyper_util::rt::TokioIo::new(stream), hyper_service)
+                        .await
+                    {
+                        tracing::warn!("Error serving connection: {:?}", err);
+                    }
+                });
+            }
+            Err(e) => {
+                tracing::warn!("Failed to accept Unix socket connection: {}", e);
+            }
+        }
+    }
 }
 
 /// Build the application router

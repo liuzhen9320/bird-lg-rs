@@ -29,4 +29,6 @@ regex = "1.0"
 reqwest = { version = "0.11", features = ["json"] }
 base64 = "0.22"
 ipnet = "2.9"
-html-escape = "0.2" 
+html-escape = "0.2"
+hyper = { version = "1.0", features = ["full"] }
+hyper-util = { version = "0.1", features = ["full"] } 

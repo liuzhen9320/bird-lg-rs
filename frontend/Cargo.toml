@@ -33,4 +33,6 @@ html-escape.workspace = true
 
 # Additional dependencies for frontend
 mime_guess = "2.0"
-rust-embed = "8.0" 
+rust-embed = "8.0"
+hyper.workspace = true
+hyper-util.workspace = true 
