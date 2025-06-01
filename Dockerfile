@@ -34,14 +34,12 @@ ARG SERVICE
 RUN echo "Building service: $SERVICE" && \
     if [ "$SERVICE" = "proxy" ]; then \
         echo "Building proxy..." && \
-        cd proxy && \
-        cargo build --release --bin bird-lgproxy-rs && \
+        cargo build --release --bin bird-lgproxy-rs -p proxy && \
         ls -la target/release/ && \
         echo "Proxy build completed"; \
     elif [ "$SERVICE" = "frontend" ]; then \
         echo "Building frontend..." && \
-        cd frontend && \
-        cargo build --release --bin bird-lg-rs && \
+        cargo build --release --bin bird-lg-rs -p frontend && \
         ls -la target/release/ && \
         echo "Frontend build completed"; \
     else \
@@ -60,7 +58,7 @@ RUN apk add --no-cache \
     traceroute
 
 # Copy the proxy binary
-COPY --from=builder /app/proxy/target/release/bird-lgproxy-rs /usr/local/bin/bird-lgproxy-rs
+COPY --from=builder /app/target/release/bird-lgproxy-rs /usr/local/bin/bird-lgproxy-rs
 
 # Create non-root user
 RUN addgroup -g 1000 -S birdlg && \
@@ -80,7 +78,7 @@ RUN apk add --no-cache \
     ca-certificates
 
 # Copy the frontend binary
-COPY --from=builder /app/frontend/target/release/bird-lg-rs /usr/local/bin/bird-lg-rs
+COPY --from=builder /app/target/release/bird-lg-rs /usr/local/bin/bird-lg-rs
 
 # Copy assets
 COPY frontend/assets /app/assets
