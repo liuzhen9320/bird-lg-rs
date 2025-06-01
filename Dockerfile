@@ -29,11 +29,23 @@ COPY Cargo.toml Cargo.lock ./
 COPY proxy ./proxy
 COPY frontend ./frontend
 
+# Build the appropriate service
 ARG SERVICE
-RUN if [ "$SERVICE" = "proxy" ]; then \
-        cd proxy && cargo build --release --bin bird-lgproxy-rs; \
+RUN echo "Building service: $SERVICE" && \
+    if [ "$SERVICE" = "proxy" ]; then \
+        echo "Building proxy..." && \
+        cd proxy && \
+        cargo build --release --bin bird-lgproxy-rs && \
+        ls -la target/release/ && \
+        echo "Proxy build completed"; \
     elif [ "$SERVICE" = "frontend" ]; then \
-        cd frontend && cargo build --release --bin bird-lg-rs; \
+        echo "Building frontend..." && \
+        cd frontend && \
+        cargo build --release --bin bird-lg-rs && \
+        ls -la target/release/ && \
+        echo "Frontend build completed"; \
+    else \
+        echo "Unknown service: $SERVICE" && exit 1; \
     fi
 
 # Proxy runtime stage
