@@ -166,7 +166,6 @@ async fn build_router() -> Router {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(axum::middleware::from_fn(middleware::access_control))
-                .into_make_service_with_connect_info::<SocketAddr>()
         )
 }
 
@@ -208,7 +207,8 @@ async fn main() -> anyhow::Result<()> {
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("Server started on TCP: {}", addr);
     
-    let app = build_router().await;
+    let app = build_router().await
+        .into_make_service_with_connect_info::<SocketAddr>();
     axum::serve(listener, app).await?;
 
     Ok(())
