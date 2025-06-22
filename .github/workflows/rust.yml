@@ -22,6 +22,10 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target: [x86_64-unknown-linux-gnu, x86_64-unknown-linux-musl]
 
     steps:
       # ─────────────────────────────────────────────────────
@@ -35,15 +39,12 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
 
       # ─────────────────────────────────────────────────────
-      - name: Bootstrap ❯❯ Restore Rust Cache
-        uses: Swatinem/rust-cache@v2
-        with:
-          key: ubuntu-latest-rust
-
       - name: Bootstrap ❯❯ Preinstall & Prepare Environment
         run: |
           sudo apt-get update
           sudo apt-get install -y musl-dev
+          echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml)" >> "$GITHUB_ENV"
+          echo "PROJECT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> "$GITHUB_ENV"
 
       # ─────────────────────────────────────────────────────
       - name: Bootstrap ❯❯ Debug ❯❯ Show version information (Rust, cargo, GCC)
@@ -55,36 +56,39 @@ jobs:
           cargo -V
           rustc -V
 
+      - name: Bootstrap ❯❯ Restore Rust Cache
+        uses: Swatinem/rust-cache@v2
+
       # ─────────────────────────────────────────────────────
       - name: Rust ❯❯ Build Proxy
         run: |
           echo "✨ Building proxy..."
           RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
-          cargo build --release --bin bird-lgproxy-rs -p bird-lgproxy-rs
-          strip target/release/bird-lgproxy-rs 2>/dev/null || true
-          ls -la target/release/
+          cargo build --locked --release --bin bird-lgproxy-rs -p bird-lgproxy-rs --target=${{ matrix.target }}
+          strip target/${{ matrix.target }}/release/bird-lgproxy-rs 2>/dev/null || true
+          ls -la target/${{ matrix.target }}/release/
           echo "✨ Proxy build completed!"
 
       - name: Rust ❯❯ Build Frontend
         run: |
           echo "✨ Building frontend..."
           RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
-          cargo build --release --bin bird-lg-rs -p bird-lg-rs
-          strip target/release/bird-lg-rs 2>/dev/null || true
-          ls -la target/release/
+          cargo build --locked --release --bin bird-lg-rs -p bird-lg-rs --target=${{ matrix.target }}
+          strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
+          ls -la target/${{ matrix.target }}/release/
           echo "✨ Frontend build completed!"
 
       # ─────────────────────────────────────────────────────
       - name: Post hooks ❯❯ Upload bird-lgproxy-rs
         uses: actions/upload-artifact@v4
         with:
-          name: bird-lgproxy-rs
-          path: target/release/bird-lgproxy-rs
+          name: ${{ matrix.target }}__bird-lgproxy-rs
+          path: target/${{ matrix.target }}/release/bird-lgproxy-rs
           retention-days: 30
 
       - name: Post hooks ❯❯ Upload bird-lg-rs
         uses: actions/upload-artifact@v4
         with:
           name: bird-lg-rs
-          path: target/release/bird-lg-rs
+          path: target/${{ matrix.target }}/release/bird-lg-rs
           retention-days: 30
