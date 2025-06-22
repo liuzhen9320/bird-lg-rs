@@ -1,0 +1,90 @@
+# eslint-disable yml/no-empty-mapping-value
+name: Rust
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: Enable debugging
+        required: false
+        default: false
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Job  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  build:
+    name: job ❯ build
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}
+    timeout-minutes: 30
+
+    steps:
+      # ─────────────────────────────────────────────────────
+      - name: Bootstrap ❯❯ actions/checkout@v4
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # ─────────────────────────────────────────────────────
+      - name: Bootstrap ❯❯ Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # ─────────────────────────────────────────────────────
+      - name: Bootstrap ❯❯ Restore Rust Cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          key: ubuntu-latest-rust
+
+      - name: Bootstrap ❯❯ Preinstall & Prepare Environment
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y musl-dev openssl-dev
+
+      # ─────────────────────────────────────────────────────
+      - name: Bootstrap ❯❯ Debug ❯❯ Show version information (Rust, cargo, GCC)
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      # ─────────────────────────────────────────────────────
+      - name: Rust ❯❯ Build Proxy
+        run: |
+          echo "✨ Building proxy..."
+          RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
+          cargo build --release --bin bird-lgproxy-rs -p bird-lgproxy-rs
+          strip target/release/bird-lgproxy-rs 2>/dev/null || true
+          ls -la target/release/
+          echo "✨ Proxy build completed!"
+
+      - name: Rust ❯❯ Build Frontend
+        run: |
+          echo "✨ Building frontend..."
+          RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
+          cargo build --release --bin bird-lg-rs -p bird-lg-rs
+          strip target/release/bird-lg-rs 2>/dev/null || true
+          ls -la target/release/
+          echo "✨ Frontend build completed!"
+
+      # ─────────────────────────────────────────────────────
+      - name: Post hooks ❯❯ Upload bird-lgproxy-rs
+        uses: actions/upload-artifact@v4
+        with:
+          name: bird-lgproxy-rs
+          path: target/release/bird-lgproxy-rs
+          retention-days: 30
+
+      - name: Post hooks ❯❯ Upload bird-lg-rs
+        uses: actions/upload-artifact@v4
+        with:
+          name: bird-lg-rs
+          path: target/release/bird-lg-rs
+          retention-days: 30
