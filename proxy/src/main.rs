@@ -166,6 +166,7 @@ async fn build_router() -> Router {
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
                 .layer(axum::middleware::from_fn(middleware::access_control))
+                .into_make_service_with_connect_info::<SocketAddr>()
         )
 }
 
