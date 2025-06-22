@@ -1,50 +1,36 @@
-# Bird-lg-rs
+# 🦅 Bird-lg-rs
 
-A Rust implementation of [bird-lg-go](https://github.com/xddxdd/bird-lg-go), providing a complete Bird Looking Glass solution. This project is designed to be a drop-in replacement for bird-lg-go with identical functionality and API compatibility.
+Another blazing-fast Rust implementation of [bird-lg-go](https://github.com/xddxdd/bird-lg-go), delivering a complete Bird Looking Glass solution with enhanced performance and reliability. This project serves as a drop-in replacement for `bird-lg-go`, maintaining full API compatibility while leveraging Rust's superior performance characteristics.
 
-## Features
+## ✨ Features
 
-- **Complete compatibility** with bird-lg-go
-- **Frontend and Proxy separation** - same architecture as the original
-- **All original features**:
-  - BGP protocol status display
-  - Route queries and filtering
-  - Traceroute functionality
-  - Whois queries
-  - BGP path visualization (bgpmap)
-  - REST API endpoints
-  - Telegram bot webhook support
-- **Performance improvements** through Rust's efficiency
-- **Memory safety** and reliability
+- **🔄 Complete compatibility** with `bird-lg-go` - seamless migration path
+- **🏗️ Frontend and Proxy separation** - maintains the proven architecture
+- **🚀 All original features included**:
+  - BGP protocol status display and monitoring
+  - Advanced route queries with filtering capabilities
+  - Comprehensive traceroute functionality
+  - Integrated whois query system
+  - BGP path visualization (bgpmap) with detailed routing information
+  - Full REST API endpoints for programmatic access
+  - Telegram bot webhook support for notifications
+- **⚡ Performance improvements** through Rust's zero-cost abstractions
+- **🛡️ Memory safety** and enhanced reliability guarantees
+- **🔧 Zero-configuration migration** from existing bird-lg-go deployments
 
-## Build Instructions
+## 🔨 Build Instructions
 
-You need to have **Rust 1.70 or newer** installed on your machine.
+Ensure you have **Docker Engine** installed on your system.
 
-Run `make` to build binaries for both the frontend and the proxy.
+Execute `./build.sh` to build images for both the frontend and proxy components.
 
-Optionally run `make install` to install them to `/usr/local/bin` (`bird-lg-rs` and `bird-lgproxy-rs`).
+## 🌐 Frontend
 
-### Build Individual Components
+The frontend delivers an intuitive web interface enabling users to monitor BGP states, execute traceroutes, perform whois queries, and visualize network topology.
 
-```bash
-# Build frontend only
-make frontend
+### ⚙️ Configuration
 
-# Build proxy only  
-make proxy
-
-# Clean build artifacts
-make clean
-```
-
-## Frontend
-
-The frontend provides the web interface where users can view BGP states, perform traceroutes, whois queries, etc.
-
-### Configuration
-
-All configuration options are identical to bird-lg-go:
+All configuration options maintain complete compatibility with bird-lg-go:
 
 | Config Key | Parameter | Environment Variable | Description |
 | ---------- | --------- | -------------------- | ----------- |
@@ -52,7 +38,7 @@ All configuration options are identical to bird-lg-go:
 | domain | --domain | BIRDLG_DOMAIN | server name domain suffixes |
 | listen | --listen | BIRDLG_LISTEN | address bird-lg is listening on (default "5000") |
 | proxy_port | --proxy-port | BIRDLG_PROXY_PORT | port bird-lgproxy is running on (default 8000) |
-| whois | --whois | BIRDLG_WHOIS | whois server for queries (default "whois.verisign-grs.com") |
+| whois | --whois | BIRDLG_WHOIS | whois server for queries (default "whois.dn42") |
 | dns_interface | --dns-interface | BIRDLG_DNS_INTERFACE | dns zone to query ASN information (default "asn.cymru.com") |
 | bgpmap_info | --bgpmap-info | BIRDLG_BGPMAP_INFO | the infos displayed in bgpmap, separated by comma (default "asn,as-name,ASName,descr") |
 | title_brand | --title-brand | BIRDLG_TITLE_BRAND | prefix of page titles in browser tabs (default "Bird-lg Rust") |
@@ -65,19 +51,19 @@ All configuration options are identical to bird-lg-go:
 | name_filter | --name-filter | BIRDLG_NAME_FILTER | protocol names to hide in summary tables (RE2 syntax) |
 | timeout | --timeout | BIRDLG_TIMEOUT | time before request timed out, in seconds (default 120) |
 
-### Example
+### 💡 Example Usage
 
 ```bash
 ./bird-lg-rs --servers=server1,server2 --domain=example.com --proxy-port=8000
 ```
 
-## Proxy
+## 🔌 Proxy
 
-The proxy provides the backend API for BIRD commands and traceroute functionality.
+The proxy component provides a robust backend API for BIRD commands and comprehensive traceroute functionality, serving as the bridge between the frontend interface and your network infrastructure.
 
-### Configuration
+### ⚙️ Configuration
 
-All configuration options are identical to bird-lg-go:
+All configuration parameters maintain full compatibility with bird-lg-go:
 
 | Config Key | Parameter | Environment Variable | Description |
 | ---------- | --------- | -------------------- | ----------- |
@@ -88,36 +74,41 @@ All configuration options are identical to bird-lg-go:
 | traceroute_flags | --traceroute-flags | BIRDLG_TRACEROUTE_FLAGS | traceroute flags, supports multiple flags separated with space |
 | traceroute_raw | --traceroute-raw | BIRDLG_TRACEROUTE_RAW | whether to display traceroute outputs raw (default false) |
 
-### Example
+### 💡 Example Usage
 
 ```bash
 ./bird-lgproxy-rs --bird /run/bird.ctl --listen 8000
 ```
 
-## Migration from bird-lg-go
+## 🚀 Migration from `bird-lg-go`
 
-This project is designed to be a **drop-in replacement** for bird-lg-go. Simply:
+This project is engineered as a **seamless drop-in replacement** for bird-lg-go. Migration is straightforward:
 
-1. Stop your existing bird-lg-go services
-2. Replace the binaries with `bird-lg-rs` and `bird-lgproxy-rs`
-3. Start the services with the same configuration
+1. **Stop** your existing bird-lg-go services
+2. **Replace** the binaries with `bird-lg-rs` and `bird-lgproxy-rs`
+3. **Start** the services using your existing configuration
 
-All command-line arguments, environment variables, and API endpoints remain identical.
+All command-line arguments, environment variables, and API endpoints remain completely identical, ensuring zero downtime migration.
 
-## API Compatibility
+## 🔌 API Compatibility
 
-All REST API endpoints are fully compatible with bird-lg-go:
+All REST API endpoints maintain full compatibility with bird-lg-go, ensuring existing integrations continue to function seamlessly:
 
-- `/api/bird/:servers/:command`
-- `/api/traceroute/:servers/:target`
-- `/api/whois/:target`
+- `/api/bird/:servers/:command` - Execute BIRD commands across specified servers
+- `/api/traceroute/:servers/:target` - Perform traceroute operations from multiple vantage points
+- `/api/whois/:target` - Query whois information for IP addresses and domains
 
-## License
+## 📄 License
 
-GPL 3.0 - Same as bird-lg-go
+GPL 3.0 - Maintaining consistency with the original `bird-lg-go` license
 
-## Credits
+## 🙏 Credits
 
-- [bird-lg-go](https://github.com/xddxdd/bird-lg-go) - The original Go implementation
-- [bird-lg](https://github.com/sileht/bird-lg) - The original Python implementation
-- All contributors to the bird-lg ecosystem
+- [bird-lg-rs](https://github.com/pysio2007/bird-lg-rs) - The original Rust implementation by Pysio
+- [bird-lg-go](https://github.com/xddxdd/bird-lg-go) - The original Go implementation that inspired this project
+- [bird-lg](https://github.com/sileht/bird-lg) - The foundational Python implementation
+- All contributors to the bird-lg ecosystem who have made this project possible
+
+---
+
+Built with ❤️ in Rust for the networking community
