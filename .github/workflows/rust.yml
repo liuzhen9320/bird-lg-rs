@@ -83,7 +83,7 @@ jobs:
           echo "✨ Building frontend..."
           if [ "$TARGET" = "x86_64-unknown-linux-musl" ]; then
             export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
-            cross cargo build --release \
+            cross build --release \
               --bin bird-lg-rs \
               -p bird-lg-rs \
               --target="$TARGET"
