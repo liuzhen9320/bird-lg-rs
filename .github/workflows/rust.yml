@@ -48,6 +48,9 @@ jobs:
           echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml)" >> "$GITHUB_ENV"
           echo "PROJECT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> "$GITHUB_ENV"
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       # ─────────────────────────────────────────────────────
       - name: Bootstrap ❯❯ Debug ❯❯ Show version information (Rust, cargo, GCC)
         run: |
@@ -72,10 +75,24 @@ jobs:
           echo "✨ Proxy build completed!"
 
       - name: Rust ❯❯ Build Frontend
+        env:
+          TARGET: ${{ matrix.target }}
         run: |
           echo "✨ Building frontend..."
-          RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
-          cargo build --release --bin bird-lg-rs -p bird-lg-rs --target=${{ matrix.target }}
+          if [ "$TARGET" = "x86_64-unknown-linux-musl" ]; then
+            docker run --rm -v "$PWD":/home/rust/src \
+              ghcr.io/rust-cross/rust-musl-cross:x86_64-musl \
+              cargo build --release \
+              --bin bird-lg-rs \
+              -p bird-lg-rs \
+              --target="$TARGET"
+          else
+          export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
+          cargo build --release \
+            --bin bird-lg-rs \
+            -p bird-lg-rs \
+            --target="$TARGET"
+          fi
           strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
           ls -la target/${{ matrix.target }}/release/
           echo "✨ Frontend build completed!"
@@ -91,6 +108,6 @@ jobs:
       - name: Post hooks ❯❯ Upload bird-lg-rs
         uses: actions/upload-artifact@v4
         with:
-          name: bird-lg-rs
+          name: ${{ matrix.target }}__bird-lgproxy-rs
           path: target/${{ matrix.target }}/release/bird-lg-rs
           retention-days: 30
