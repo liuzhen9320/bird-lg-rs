@@ -60,6 +60,8 @@ jobs:
           rustup default
           cargo -V
           rustc -V
+          # install cross-rs
+          cargo install cross
 
       - name: Bootstrap ❯❯ Restore Rust Cache
         uses: Swatinem/rust-cache@v2
@@ -80,18 +82,17 @@ jobs:
         run: |
           echo "✨ Building frontend..."
           if [ "$TARGET" = "x86_64-unknown-linux-musl" ]; then
-            docker run --rm -v "$PWD":/home/rust/src \
-              ghcr.io/rust-cross/rust-musl-cross:x86_64-musl \
-              cargo build --release \
+            export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
+            cross cargo build --release \
               --bin bird-lg-rs \
               -p bird-lg-rs \
               --target="$TARGET"
           else
-          export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
-          cargo build --release \
-            --bin bird-lg-rs \
-            -p bird-lg-rs \
-            --target="$TARGET"
+            export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
+            cargo build --release \
+              --bin bird-lg-rs \
+              -p bird-lg-rs \
+              --target="$TARGET"
           fi
           strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
           ls -la target/${{ matrix.target }}/release/
