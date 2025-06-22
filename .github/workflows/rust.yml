@@ -64,7 +64,7 @@ jobs:
         run: |
           echo "✨ Building proxy..."
           RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
-          cargo build --locked --release --bin bird-lgproxy-rs -p bird-lgproxy-rs --target=${{ matrix.target }}
+          cargo build --release --bin bird-lgproxy-rs -p bird-lgproxy-rs --target=${{ matrix.target }}
           strip target/${{ matrix.target }}/release/bird-lgproxy-rs 2>/dev/null || true
           ls -la target/${{ matrix.target }}/release/
           echo "✨ Proxy build completed!"
@@ -73,7 +73,7 @@ jobs:
         run: |
           echo "✨ Building frontend..."
           RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s" \
-          cargo build --locked --release --bin bird-lg-rs -p bird-lg-rs --target=${{ matrix.target }}
+          cargo build --release --bin bird-lg-rs -p bird-lg-rs --target=${{ matrix.target }}
           strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
           ls -la target/${{ matrix.target }}/release/
           echo "✨ Frontend build completed!"
