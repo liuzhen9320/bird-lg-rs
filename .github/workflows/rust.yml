@@ -88,19 +88,21 @@ jobs:
           echo "✨ Building frontend..."
           if [ "$TARGET" = "x86_64-unknown-linux-musl" ]; then
             export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
-            cross build --release \
-              --bin bird-lg-rs \
-              -p bird-lg-rs \
-              --target="$TARGET"
+            # cross build --release \
+            #   --bin bird-lg-rs \
+            #   -p bird-lg-rs \
+            #   --target="$TARGET"
+            # strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
+            # ls -la target/${{ matrix.target }}/release/
           else
             export RUSTFLAGS="-C strip=symbols -C target-cpu=generic -C link-arg=-s"
             cargo build --release \
               --bin bird-lg-rs \
               -p bird-lg-rs \
               --target="$TARGET"
+            strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
+            ls -la target/${{ matrix.target }}/release/
           fi
-          strip target/${{ matrix.target }}/release/bird-lg-rs 2>/dev/null || true
-          ls -la target/${{ matrix.target }}/release/
           echo "✨ Frontend build completed!"
 
       - name: Upload ❯❯ Upload bird-lg-rs
