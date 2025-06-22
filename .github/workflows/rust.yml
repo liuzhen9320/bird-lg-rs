@@ -43,7 +43,7 @@ jobs:
       - name: Bootstrap ❯❯ Preinstall & Prepare Environment
         run: |
           sudo apt-get update
-          sudo apt-get install -y musl-dev openssl-dev
+          sudo apt-get install -y musl-dev
 
       # ─────────────────────────────────────────────────────
       - name: Bootstrap ❯❯ Debug ❯❯ Show version information (Rust, cargo, GCC)
