@@ -1,12 +1,12 @@
 use axum::{
-    extract::Request,
+    extract::{ConnectInfo, Request},
     http::StatusCode,
     middleware::Next,
     response::{IntoResponse, Response},
 };
 use crate::settings::Settings;
 
-pub async fn access_control(request: Request, next: Next) -> Result<Response, Response> {
+pub async fn access_control(request: Request, next: Next, connect_info: ConnectInfo<SocketAddr>) -> Result<Response, Response> {
     let settings = Settings::global();
     
     // Get remote address from request
@@ -30,15 +30,18 @@ pub async fn access_control(request: Request, next: Next) -> Result<Response, Re
             });
         let fallback_ip = x_real_ip
             .or_else(|| {
-                request
-                    .remote_addr()
-                    .map(|addr| addr.ip().to_string())
+                Some(
+                    connect_info
+                        .0
+                        .ip()
+                        .to_string(),
+                )
             })
             .unwrap_or_else(|| "unknown".to_string());
         fallback_ip
     };
 
-    if settings.has_access(remote_ip) {
+    if settings.has_access(&remote_ip) {
         Ok(next.run(request).await)
     } else {
         Err((StatusCode::BAD_REQUEST, "Invalid Request\n").into_response())
