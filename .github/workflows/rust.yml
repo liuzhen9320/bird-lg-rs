@@ -108,6 +108,6 @@ jobs:
       - name: Post hooks ❯❯ Upload bird-lg-rs
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.target }}__bird-lgproxy-rs
+          name: ${{ matrix.target }}__bird-lg-rs
           path: target/${{ matrix.target }}/release/bird-lg-rs
           retention-days: 30
