@@ -48,9 +48,6 @@ jobs:
           echo "PROJECT_NAME=$(sed -n 's/^name = "\(.*\)"/\1/p' Cargo.toml)" >> "$GITHUB_ENV"
           echo "PROJECT_VERSION=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)" >> "$GITHUB_ENV"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       # ─────────────────────────────────────────────────────
       - name: Bootstrap ❯❯ Debug ❯❯ Show version information (Rust, cargo, GCC)
         run: |
@@ -76,6 +73,13 @@ jobs:
           ls -la target/${{ matrix.target }}/release/
           echo "✨ Proxy build completed!"
 
+      - name: Upload ❯❯ Upload bird-lgproxy-rs
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.target }}__bird-lgproxy-rs
+          path: target/${{ matrix.target }}/release/bird-lgproxy-rs
+          retention-days: 30
+
       - name: Rust ❯❯ Build Frontend
         env:
           TARGET: ${{ matrix.target }}
@@ -98,15 +102,7 @@ jobs:
           ls -la target/${{ matrix.target }}/release/
           echo "✨ Frontend build completed!"
 
-      # ─────────────────────────────────────────────────────
-      - name: Post hooks ❯❯ Upload bird-lgproxy-rs
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ matrix.target }}__bird-lgproxy-rs
-          path: target/${{ matrix.target }}/release/bird-lgproxy-rs
-          retention-days: 30
-
-      - name: Post hooks ❯❯ Upload bird-lg-rs
+      - name: Upload ❯❯ Upload bird-lg-rs
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.target }}__bird-lg-rs
