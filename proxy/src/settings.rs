@@ -81,7 +81,7 @@ impl Settings {
         if let Ok(ip) = ip_str.parse::<IpAddr>() {
             for net in &self.allowed_nets {
                 if net.contains(&ip) {
-                    debug!("allowed ip: ", ip);
+                    debug!("allowed ip: {}", ip);
                     return true;
                 }
             }
