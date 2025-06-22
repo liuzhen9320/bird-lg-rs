@@ -65,7 +65,7 @@ impl Settings {
     pub fn has_access(&self, remote_addr: &str) -> bool {
         // If no allowed networks are specified, allow all
         if self.allowed_nets.is_empty() {
-            debug!("allowed_nets is empty")
+            debug!("allowed_nets is empty");
             return true;
         }
 
@@ -81,7 +81,7 @@ impl Settings {
         if let Ok(ip) = ip_str.parse::<IpAddr>() {
             for net in &self.allowed_nets {
                 if net.contains(&ip) {
-                    debug!("allowed ip: ", ip)
+                    debug!("allowed ip: ", ip);
                     return true;
                 }
             }
