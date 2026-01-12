@@ -1,6 +1,6 @@
 use axum::{
     extract::{Request, ConnectInfo},
-    http::StatusCode,
+    http::{StatusCode, header::AUTHORIZATION},
     middleware::Next,
     response::{IntoResponse, Response},
 };
@@ -20,9 +20,38 @@ pub async fn access_control(
 
     debug!("Request IP: {}", remote_ip);
 
-    if settings.has_access(&remote_ip) {
-        Ok(next.run(request).await)
-    } else {
-        Err((StatusCode::BAD_REQUEST, "400 Invalid Request\n").into_response())
+    // Check IP access control
+    if !settings.has_access(&remote_ip) {
+        return Err((StatusCode::FORBIDDEN, "403 Forbidden\n").into_response());
     }
+
+    // Check token authentication if enabled
+    if settings.auth_enabled {
+        let auth_header = request.headers().get(AUTHORIZATION);
+        match auth_header {
+            Some(header_value) => {
+                let header_str = header_value.to_str().unwrap_or("");
+                if !header_str.starts_with("Bearer ") {
+                    debug!("Invalid authorization header format");
+                    return Err((StatusCode::UNAUTHORIZED, "401 Unauthorized\n").into_response());
+                }
+                let token = &header_str[7..]; // Skip "Bearer "
+                if let Some(expected_token) = &settings.auth_token {
+                    if token != expected_token {
+                        debug!("Invalid token provided");
+                        return Err((StatusCode::UNAUTHORIZED, "401 Unauthorized\n").into_response());
+                    }
+                } else {
+                    debug!("Auth enabled but no token configured");
+                    return Err((StatusCode::INTERNAL_SERVER_ERROR, "500 Internal Server Error\n").into_response());
+                }
+            }
+            None => {
+                debug!("Authorization header missing");
+                return Err((StatusCode::UNAUTHORIZED, "401 Unauthorized\n").into_response());
+            }
+        }
+    }
+
+    Ok(next.run(request).await)
 }

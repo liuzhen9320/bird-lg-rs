@@ -69,6 +69,14 @@ struct Args {
     /// Restrict Bird queries to show protocols and show route commands
     #[arg(long, default_value_t = true)]
     bird_restrict_cmds: bool,
+
+    /// Enable token-based authentication
+    #[arg(long, default_value_t = false)]
+    auth_enabled: bool,
+
+    /// Authentication token for API access
+    #[arg(long)]
+    auth_token: Option<String>,
 }
 
 #[derive(Deserialize)]

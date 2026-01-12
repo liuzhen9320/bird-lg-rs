@@ -15,6 +15,8 @@ pub struct Settings {
     pub traceroute_raw: bool,
     pub traceroute_max_concurrent: usize,
     pub bird_restrict_cmds: bool,
+    pub auth_enabled: bool,
+    pub auth_token: Option<String>,
 }
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();
@@ -54,6 +56,8 @@ impl Settings {
             traceroute_raw: args.traceroute_raw,
             traceroute_max_concurrent: args.traceroute_max_concurrent,
             bird_restrict_cmds: args.bird_restrict_cmds,
+            auth_enabled: args.auth_enabled,
+            auth_token: args.auth_token,
         };
 
         info!("Settings initialized: {:?}", settings);

@@ -31,6 +31,8 @@ pub struct Settings {
     #[allow(dead_code)]
     pub name_filter: String,
     pub timeout: u64,
+    pub auth_enabled: bool,
+    pub auth_token: Option<String>,
 }
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();
@@ -105,6 +107,8 @@ impl Settings {
             protocol_filter: args.protocol_filter.unwrap_or_default(),
             name_filter: args.name_filter,
             timeout: args.timeout,
+            auth_enabled: args.auth_enabled,
+            auth_token: args.auth_token,
         };
 
         info!("Settings initialized: {:?}", settings);

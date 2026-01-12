@@ -109,6 +109,14 @@ struct Args {
     /// Telegram bot name
     #[arg(long, default_value = "")]
     telegram_bot_name: String,
+
+    /// Enable token-based authentication for proxy requests
+    #[arg(long, default_value_t = false)]
+    auth_enabled: bool,
+
+    /// Authentication token for proxy requests
+    #[arg(long)]
+    auth_token: Option<String>,
 }
 
 /// Create Unix socket listener on Unix systems
