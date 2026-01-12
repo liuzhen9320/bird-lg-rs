@@ -61,6 +61,10 @@ struct Args {
     /// Whether to display traceroute outputs raw
     #[arg(long)]
     traceroute_raw: bool,
+
+    /// Restrict Bird queries to show protocols and show route commands
+    #[arg(long, default_value_t = true)]
+    bird_restrict_cmds: bool,
 }
 
 #[derive(Deserialize)]
@@ -84,6 +88,14 @@ async fn bird_handler(
 ) -> Result<impl IntoResponse, Response> {
     if params.q.is_empty() {
         return Err((StatusCode::BAD_REQUEST, "Query parameter 'q' is required").into_response());
+    }
+
+    let settings = Settings::global();
+    if settings.bird_restrict_cmds {
+        let query_lower = params.q.to_lowercase();
+        if !query_lower.starts_with("show protocols") && !query_lower.starts_with("show route") {
+            return Err((StatusCode::BAD_REQUEST, "Query not allowed. Only 'show protocols' and 'show route' commands are permitted.").into_response());
+        }
     }
 
     match bird::execute_bird_command(&params.q).await {

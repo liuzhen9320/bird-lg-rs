@@ -13,6 +13,7 @@ pub struct Settings {
     pub traceroute_bin: Option<String>,
     pub traceroute_flags: Vec<String>,
     pub traceroute_raw: bool,
+    pub bird_restrict_cmds: bool,
 }
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();
@@ -50,6 +51,7 @@ impl Settings {
             traceroute_bin: args.traceroute_bin,
             traceroute_flags,
             traceroute_raw: args.traceroute_raw,
+            bird_restrict_cmds: args.bird_restrict_cmds,
         };
 
         info!("Settings initialized: {:?}", settings);
