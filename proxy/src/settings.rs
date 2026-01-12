@@ -13,6 +13,7 @@ pub struct Settings {
     pub traceroute_bin: Option<String>,
     pub traceroute_flags: Vec<String>,
     pub traceroute_raw: bool,
+    pub traceroute_max_concurrent: usize,
     pub bird_restrict_cmds: bool,
 }
 
@@ -51,6 +52,7 @@ impl Settings {
             traceroute_bin: args.traceroute_bin,
             traceroute_flags,
             traceroute_raw: args.traceroute_raw,
+            traceroute_max_concurrent: args.traceroute_max_concurrent,
             bird_restrict_cmds: args.bird_restrict_cmds,
         };
 

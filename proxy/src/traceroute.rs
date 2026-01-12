@@ -1,7 +1,7 @@
 use anyhow::{anyhow, Result};
 use regex::Regex;
 use std::sync::OnceLock;
-use tokio::process::Command as TokioCommand;
+use tokio::sync::Semaphore;
 use tracing::{info, warn};
 use crate::settings::Settings;
 
@@ -12,6 +12,7 @@ struct TracerouteConfig {
 }
 
 static TRACEROUTE_CONFIG: OnceLock<Option<TracerouteConfig>> = OnceLock::new();
+static TRACEROUTE_SEMAPHORE: OnceLock<Semaphore> = OnceLock::new();
 
 /// Convert command and args to string for display
 fn args_to_string(cmd: &str, args: &[String], target: &[String]) -> String {
@@ -118,6 +119,10 @@ pub async fn init() {
     }
     
     TRACEROUTE_CONFIG.set(detected_config).unwrap();
+    
+    // Initialize semaphore for limiting concurrent traceroute requests
+    let semaphore = Semaphore::new(settings.traceroute_max_concurrent);
+    TRACEROUTE_SEMAPHORE.set(semaphore).unwrap();
 }
 
 /// Execute traceroute command
@@ -128,9 +133,15 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         .as_ref()
         .ok_or_else(|| anyhow!("Traceroute not supported on this node"))?;
 
-    let settings = Settings::global();
+    let semaphore = TRACEROUTE_SEMAPHORE
+        .get()
+        .ok_or_else(|| anyhow!("Traceroute semaphore not initialized"))?;
     
-    // Parse arguments using shlex
+    // Acquire semaphore permit to limit concurrent requests
+    let _permit = semaphore.acquire().await
+        .map_err(|e| anyhow!("Failed to acquire traceroute semaphore: {}", e))?;
+    
+    // Execute traceroute
     let args = shlex::split(query.trim())
         .ok_or_else(|| anyhow!("Failed to parse args: invalid shell syntax"))?;
     

@@ -62,6 +62,10 @@ struct Args {
     #[arg(long)]
     traceroute_raw: bool,
 
+    /// Maximum number of concurrent traceroute requests
+    #[arg(long, default_value_t = 10)]
+    traceroute_max_concurrent: usize,
+
     /// Restrict Bird queries to show protocols and show route commands
     #[arg(long, default_value_t = true)]
     bird_restrict_cmds: bool,
