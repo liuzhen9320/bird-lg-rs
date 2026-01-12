@@ -4,7 +4,7 @@ version.workspace = true
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
-description = "Bird LG Frontend implementation in Rust"
+description = "Bird Looking Glass (Frontend) implementation in Rust"
 
 [[bin]]
 name = "bird-lg-rs"

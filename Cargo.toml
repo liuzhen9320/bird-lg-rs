@@ -3,11 +3,11 @@ members = ["proxy", "frontend"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
-authors = ["Bird-LG-RS"]
+authors = ["liuzhen9320", "pysio2007"]
 license = "GPL-3.0"
-description = "Bird Looking Glass implementation in Rust"
+description = "BIRD Looking Glass in Rust with more feature"
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
