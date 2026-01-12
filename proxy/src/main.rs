@@ -20,7 +20,7 @@ use std::{
 };
 
 #[cfg(unix)]
-use tokio::net::{UnixListener, UnixStream};
+use tokio::net::UnixListener;
 
 #[cfg(unix)]
 use tower::Service;

@@ -1,6 +1,7 @@
 use anyhow::{anyhow, Result};
 use regex::Regex;
 use std::sync::OnceLock;
+use tokio::process::Command;
 use tokio::sync::Semaphore;
 use tracing::{info, warn};
 use crate::settings::Settings;
@@ -24,7 +25,7 @@ fn args_to_string(cmd: &str, args: &[String], target: &[String]) -> String {
 
 /// Try to execute traceroute with given parameters to test if it works
 async fn try_execute(cmd: &str, args: &[String], target: &[String]) -> Result<Vec<u8>> {
-    let mut command = TokioCommand::new(cmd);
+    let mut command = Command::new(cmd);
     command.args(args);
     command.args(target);
     
@@ -127,6 +128,8 @@ pub async fn init() {
 
 /// Execute traceroute command
 pub async fn execute_traceroute(query: &str) -> Result<String> {
+    let settings = Settings::global();
+
     let config = TRACEROUTE_CONFIG
         .get()
         .ok_or_else(|| anyhow!("Traceroute not initialized"))?
