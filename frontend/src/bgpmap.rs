@@ -273,7 +273,7 @@ fn bird_route_to_graph(servers: &[String], responses: &[String], target: &str) -
     let protocol_name_re = Regex::new(r"\[(.*?) .*\]").unwrap();
     let route_split_re = Regex::new(r"(unicast|blackhole|unreachable|prohibited)").unwrap();
     let route_via_re = Regex::new(r"(?m)^\t(via .*?)$").unwrap();
-    let route_as_path_re = Regex::new(r"(?m)^\tBGP\.as_path: (.*?)$").unwrap();
+    let route_as_path_re = Regex::new(r"(?mi)^\tBGP(?:\.as)?_path: (.*?)$").unwrap();
 
     for (server_id, server) in servers.iter().enumerate() {
         if let Some(response) = responses.get(server_id) {

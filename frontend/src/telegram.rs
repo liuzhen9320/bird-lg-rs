@@ -87,7 +87,7 @@ async fn telegram_batch_request_format(
 
 fn extract_as_path(result: &str) -> String {
     for line in result.lines() {
-        if line.contains("BGP.as_path: ") {
+        if line.contains("BGP.as_path: ") || line.contains("bgp_path: ") {
             if let Some(path) = line.split(':').nth(1) {
                 return path.trim().to_string();
             }
