@@ -77,9 +77,14 @@ struct TracerouteQuery {
     q: String,
 }
 
-// Default handler, returns 500 Internal Server Error
+// Default handler, returns project info
+async fn index_handler() -> impl IntoResponse {
+    (StatusCode::OK, "bird-lg-rs\n\nhttps://github.com/liuzhen9320/bird-lg-rs\n")
+}
+
+// Invalid request handler for unmatched routes
 async fn invalid_handler() -> impl IntoResponse {
-    (StatusCode::INTERNAL_SERVER_ERROR, "Invalid Request\n")
+    (StatusCode::BAD_REQUEST, "400 Bad Request\n")
 }
 
 // Handles BIRD queries
@@ -169,11 +174,12 @@ async fn create_unix_listener(socket_path: &str) -> anyhow::Result<()> {
 /// Build the application router
 async fn build_router() -> Router {
     Router::new()
-        .route("/", get(invalid_handler))
+        .route("/", get(index_handler))
         .route("/bird", get(bird_handler))
         .route("/bird6", get(bird_handler))
         .route("/traceroute", get(traceroute_handler))
         .route("/traceroute6", get(traceroute_handler))
+        .fallback(invalid_handler)
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
