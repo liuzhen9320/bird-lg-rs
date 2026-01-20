@@ -59,6 +59,10 @@ async fn traceroute_detect(cmd: &str, args: &[String]) -> bool {
 pub async fn init() {
     let settings = Settings::global();
     
+    // Initialize semaphore for limiting concurrent traceroute requests
+    let semaphore = Semaphore::new(settings.traceroute_max_concurrent);
+    TRACEROUTE_SEMAPHORE.set(semaphore).unwrap();
+
     // If both bin and flags are set, use them directly
     if settings.traceroute_bin.is_some() && !settings.traceroute_flags.is_empty() {
         let config = TracerouteConfig {
@@ -68,8 +72,6 @@ pub async fn init() {
         TRACEROUTE_CONFIG.set(Some(config)).unwrap();
         return;
     }
-
-    let mut detected_config = None;
 
     // Custom binary tests
     if let Some(ref custom_bin) = settings.traceroute_bin {
