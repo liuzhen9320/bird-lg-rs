@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use serde::Serialize;
 use std::sync::OnceLock;
 use tera::{Context, Tera};
