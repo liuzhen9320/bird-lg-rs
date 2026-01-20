@@ -141,6 +141,10 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
     
+    if server_list.len() > settings.servers.len() {
+        return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+    }
+    
     let mut content = String::new();
     
     for server in &server_list {
@@ -211,6 +215,10 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
     
+    if server_list.len() > settings.servers.len() {
+        return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+    }
+    
     let mut content = String::new();
     
     for server in &server_list {
@@ -253,6 +261,10 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
 async fn handle_bgpmap_command(servers: String, command: String, target: String) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
+    
+    if server_list.len() > settings.servers.len() {
+        return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+    }
     
     let mut responses = Vec::new();
     for server in &server_list {
