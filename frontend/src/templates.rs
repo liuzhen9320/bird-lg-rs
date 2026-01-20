@@ -73,7 +73,7 @@ pub fn init() -> Result<()> {
     
     // Load embedded templates
     for file in Templates::iter() {
-        let content = Templates::get(&file).unwrap();
+        let content = Templates::get(&file).ok_or_else(|| anyhow!("Template {} not found", file))?;
         let content_str = std::str::from_utf8(content.data.as_ref())?;
         tera.add_raw_template(&file, content_str)?;
     }

@@ -270,10 +270,10 @@ fn bird_route_to_graph(servers: &[String], responses: &[String], target: &str) -
     graph.add_point(target.to_string(), false, target_attrs);
 
     // Compile regex patterns
-    let protocol_name_re = Regex::new(r"\[(.*?) .*\]").unwrap();
-    let route_split_re = Regex::new(r"(unicast|blackhole|unreachable|prohibited)").unwrap();
-    let route_via_re = Regex::new(r"(?m)^\t(via .*?)$").unwrap();
-    let route_as_path_re = Regex::new(r"(?mi)^\tBGP(?:\.as)?_path: (.*?)$").unwrap();
+    let protocol_name_re = Regex::new(r"\[(.*?) .*\]").expect("Invalid regex pattern");
+    let route_split_re = Regex::new(r"(unicast|blackhole|unreachable|prohibited)").expect("Invalid regex pattern");
+    let route_via_re = Regex::new(r"(?m)^\t(via .*?)$").expect("Invalid regex pattern");
+    let route_as_path_re = Regex::new(r"(?mi)^\tBGP(?:\.as)?_path: (.*?)$").expect("Invalid regex pattern");
 
     for (server_id, server) in servers.iter().enumerate() {
         if let Some(response) = responses.get(server_id) {
@@ -461,7 +461,7 @@ mod tests {
         );
 
         // Decode the base64 result to check for XSS
-        let decoded = String::from_utf8(general_purpose::STANDARD.decode(result).unwrap()).unwrap();
+        let decoded = String::from_utf8(general_purpose::STANDARD.decode(result).expect("Failed to decode base64")).expect("Failed to convert to string");
         assert!(!decoded.contains(fake_result), "XSS injection succeeded: {}", decoded);
     }
 
@@ -522,7 +522,7 @@ mod tests {
         let base64_result = general_purpose::STANDARD.encode(&dot_result);
         
         // Decode the base64 result
-        let decoded = String::from_utf8(general_purpose::STANDARD.decode(base64_result).unwrap()).unwrap();
+        let decoded = String::from_utf8(general_purpose::STANDARD.decode(base64_result).expect("Failed to decode base64")).expect("Failed to convert to string");
         assert!(decoded.contains("digraph {"), "Response is not Graphviz data");
         assert_eq!(decoded, dot_result, "Round-trip encoding/decoding should match");
     }
@@ -541,7 +541,7 @@ mod tests {
         let base64_result = general_purpose::STANDARD.encode(&dot_result);
         
         // Decode the base64 result
-        let decoded = String::from_utf8(general_purpose::STANDARD.decode(base64_result).unwrap()).unwrap();
+        let decoded = String::from_utf8(general_purpose::STANDARD.decode(base64_result).expect("Failed to decode base64")).expect("Failed to convert to string");
         println!("Generated DOT:\n{}", decoded);
         
         // Check that it starts and ends properly

@@ -18,11 +18,11 @@ pub async fn serve_static(Path(path): Path<String>) -> impl IntoResponse {
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime.as_ref())
                 .body(Body::from(content.data))
-                .unwrap()
+                .expect("Failed to build response")
         }
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Body::from("File not found"))
-            .unwrap(),
+            .expect("Failed to build response"),
     }
 } 

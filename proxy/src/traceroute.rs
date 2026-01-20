@@ -61,15 +61,17 @@ pub async fn init() {
     
     // Initialize semaphore for limiting concurrent traceroute requests
     let semaphore = Semaphore::new(settings.traceroute_max_concurrent);
-    TRACEROUTE_SEMAPHORE.set(semaphore).unwrap();
+    TRACEROUTE_SEMAPHORE.set(semaphore).expect("Semaphore already initialized");
+
+    let mut detected_config = None;
 
     // If both bin and flags are set, use them directly
     if settings.traceroute_bin.is_some() && !settings.traceroute_flags.is_empty() {
         let config = TracerouteConfig {
-            bin: settings.traceroute_bin.as_ref().unwrap().clone(),
+            bin: settings.traceroute_bin.as_ref().expect("Bin should be set").clone(),
             flags: settings.traceroute_flags.clone(),
         };
-        TRACEROUTE_CONFIG.set(Some(config)).unwrap();
+        TRACEROUTE_CONFIG.set(Some(config)).expect("Config already initialized");
         return;
     }
 
@@ -121,11 +123,7 @@ pub async fn init() {
         warn!("Traceroute autodetect failed! Traceroute will be disabled");
     }
     
-    TRACEROUTE_CONFIG.set(detected_config).unwrap();
-    
-    // Initialize semaphore for limiting concurrent traceroute requests
-    let semaphore = Semaphore::new(settings.traceroute_max_concurrent);
-    TRACEROUTE_SEMAPHORE.set(semaphore).unwrap();
+    TRACEROUTE_CONFIG.set(detected_config).expect("Config already initialized");
 }
 
 /// Execute traceroute command
@@ -160,7 +158,7 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         Ok(output.to_string())
     } else {
         // Process output to remove unresponsive hops and count them
-        let re = Regex::new(r"(?m)^\s*(\d*)\s*\*\n").unwrap();
+        let re = Regex::new(r"(?m)^\s*(\d*)\s*\*\n").expect("Invalid regex pattern");
         let mut skipped_counter = 0;
         
         let processed = re.replace_all(&output, |_: &regex::Captures| {

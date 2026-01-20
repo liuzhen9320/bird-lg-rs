@@ -18,7 +18,8 @@ pub async fn bird_query(server: &str, command: &str) -> Result<String> {
     if settings.auth_enabled {
         if let Some(token) = &settings.auth_token {
             let mut headers = HeaderMap::new();
-            headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap());
+            let header_value = format!("Bearer {}", token).parse().map_err(|e| anyhow!("Invalid auth token: {}", e))?;
+            headers.insert(AUTHORIZATION, header_value);
             request = request.headers(headers);
         }
     }
@@ -47,7 +48,8 @@ pub async fn traceroute_query(server: &str, target: &str) -> Result<String> {
     if settings.auth_enabled {
         if let Some(token) = &settings.auth_token {
             let mut headers = HeaderMap::new();
-            headers.insert(AUTHORIZATION, format!("Bearer {}", token).parse().unwrap());
+            let header_value = format!("Bearer {}", token).parse().map_err(|e| anyhow!("Invalid auth token: {}", e))?;
+            headers.insert(AUTHORIZATION, header_value);
             request = request.headers(headers);
         }
     }
