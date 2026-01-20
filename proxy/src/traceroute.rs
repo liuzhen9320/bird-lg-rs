@@ -144,33 +144,45 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
     let _permit = semaphore.acquire().await
         .map_err(|e| anyhow!("Failed to acquire traceroute semaphore: {}", e))?;
     
-    // Execute traceroute
-    let args = shlex::split(query.trim())
-        .ok_or_else(|| anyhow!("Failed to parse args: invalid shell syntax"))?;
+    // Validate query: prevent parameter injection by rejecting targets with spaces
+    let trimmed_query = query.trim();
+    if trimmed_query.is_empty() {
+        return Err(anyhow!("Invalid target: query is empty"));
+    }
+    if trimmed_query.contains(' ') {
+        return Err(anyhow!("Invalid target: contains spaces (parameter injection not allowed)"));
+    }
     
-    // Execute traceroute
-    let result = try_execute(&config.bin, &config.flags, &args).await
-        .map_err(|e| anyhow!("Error executing traceroute: {}", e))?;
+    // Execute traceroute with target as single argument
+    let mut command = Command::new(&config.bin);
+    command.args(&config.flags);
+    command.arg(trimmed_query);
     
-    let output = String::from_utf8_lossy(&result);
+    let output = command.output().await?;
     
-    if settings.traceroute_raw {
-        Ok(output.to_string())
-    } else {
-        // Process output to remove unresponsive hops and count them
-        let re = Regex::new(r"(?m)^\s*(\d*)\s*\*\n").expect("Invalid regex pattern");
-        let mut skipped_counter = 0;
+    if output.status.success() {
+        let output_str = String::from_utf8_lossy(&output.stdout);
         
-        let processed = re.replace_all(&output, |_: &regex::Captures| {
-            skipped_counter += 1;
-            ""
-        });
-        
-        let mut result = processed.trim().to_string();
-        if skipped_counter > 0 {
-            result.push_str(&format!("\n\n{} hops not responding.", skipped_counter));
+        if settings.traceroute_raw {
+            Ok(output_str.to_string())
+        } else {
+            // Process output to remove unresponsive hops and count them
+            let re = Regex::new(r"(?m)^\s*(\d*)\s*\*\n").expect("Invalid regex pattern");
+            let mut skipped_counter = 0;
+            
+            let processed = re.replace_all(&output_str, |_: &regex::Captures| {
+                skipped_counter += 1;
+                ""
+            });
+            
+            let mut result = processed.trim().to_string();
+            if skipped_counter > 0 {
+                result.push_str(&format!("\n\n{} hops not responding.", skipped_counter));
+            }
+            
+            Ok(result)
         }
-        
-        Ok(result)
+    } else {
+        Err(anyhow!("Error executing traceroute: command failed with status: {}", output.status))
     }
 } 
