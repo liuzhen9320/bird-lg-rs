@@ -145,6 +145,11 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
         return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
     }
     
+    // Validate all servers before processing
+    if let Err(e) = proxy_client::validate_servers(&server_list) {
+        return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
+    }
+    
     let mut content = String::new();
     
     for server in &server_list {
@@ -219,6 +224,11 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
         return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
     }
     
+    // Validate all servers before processing
+    if let Err(e) = proxy_client::validate_servers(&server_list) {
+        return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
+    }
+    
     let mut content = String::new();
     
     for server in &server_list {
@@ -264,6 +274,11 @@ async fn handle_bgpmap_command(servers: String, command: String, target: String)
     
     if server_list.len() > settings.servers.len() {
         return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+    }
+    
+    // Validate all servers before processing
+    if let Err(e) = proxy_client::validate_servers(&server_list) {
+        return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
     
     let mut responses = Vec::new();

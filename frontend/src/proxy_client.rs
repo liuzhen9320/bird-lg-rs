@@ -3,6 +3,19 @@ use reqwest::{Client, header::{HeaderMap, AUTHORIZATION}};
 use std::time::Duration;
 use crate::settings::Settings;
 
+/// Validate that all requested servers are in the configured server list
+pub fn validate_servers(servers: &[String]) -> Result<()> {
+    let settings = Settings::global();
+    
+    for server in servers {
+        if !settings.servers.contains(server) {
+            return Err(anyhow!("request failed: invalid server"));
+        }
+    }
+    
+    Ok(())
+}
+
 pub async fn bird_query(server: &str, command: &str) -> Result<String> {
     let settings = Settings::global();
     let client = Client::new();

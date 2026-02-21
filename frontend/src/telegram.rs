@@ -58,6 +58,16 @@ async fn telegram_batch_request_format(
     command: &str,
     post_process: fn(&str) -> String
 ) -> String {
+    // Validate all servers before processing
+    if let Err(e) = proxy_client::validate_servers(servers) {
+        return format!("Error: {}", e);
+    }
+    
+    let settings = Settings::global();
+    if servers.len() > settings.servers.len() {
+        return "Error: invalid request: too many servers specified".to_string();
+    }
+    
     let mut result = String::new();
     
     for server in servers {

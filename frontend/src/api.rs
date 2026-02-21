@@ -1,6 +1,7 @@
 use axum::{
     extract::Path,
     response::{IntoResponse, Json},
+    http::StatusCode,
 };
 use serde_json::json;
 use crate::{proxy_client, whois, settings::Settings};
@@ -8,6 +9,26 @@ use crate::{proxy_client, whois, settings::Settings};
 pub async fn bird_api(Path((servers, command)): Path<(String, String)>) -> impl IntoResponse {
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
+    
+    // Validate request before processing
+    if server_list.len() > settings.servers.len() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Invalid request: too many servers specified"
+            }))
+        ).into_response();
+    }
+    
+    if let Err(e) = proxy_client::validate_servers(&server_list) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": e.to_string()
+            }))
+        ).into_response();
+    }
+    
     let mut results = Vec::new();
     
     for server in &server_list {
@@ -29,16 +50,39 @@ pub async fn bird_api(Path((servers, command)): Path<(String, String)>) -> impl 
         }
     }
     
-    Json(json!({
-        "servers": server_list,
-        "command": command,
-        "results": results
-    }))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "servers": server_list,
+            "command": command,
+            "results": results
+        }))
+    ).into_response()
 }
 
 pub async fn traceroute_api(Path((servers, target)): Path<(String, String)>) -> impl IntoResponse {
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
+    
+    // Validate request before processing
+    if server_list.len() > settings.servers.len() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": "Invalid request: too many servers specified"
+            }))
+        ).into_response();
+    }
+    
+    if let Err(e) = proxy_client::validate_servers(&server_list) {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({
+                "error": e.to_string()
+            }))
+        ).into_response();
+    }
+    
     let mut results = Vec::new();
     
     for server in &server_list {
@@ -60,11 +104,14 @@ pub async fn traceroute_api(Path((servers, target)): Path<(String, String)>) -> 
         }
     }
     
-    Json(json!({
-        "servers": server_list,
-        "target": target,
-        "results": results
-    }))
+    (
+        StatusCode::OK,
+        Json(json!({
+            "servers": server_list,
+            "target": target,
+            "results": results
+        }))
+    ).into_response()
 }
 
 pub async fn whois_api(Path(target): Path<String>) -> impl IntoResponse {

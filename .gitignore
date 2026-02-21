@@ -106,3 +106,6 @@ bird-lgproxy-rs
 # Test outputs
 test-results/
 coverage-reports/
+
+*.md
+!README.md
