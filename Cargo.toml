@@ -11,8 +11,8 @@ description = "BIRD Looking Glass in Rust with more feature"
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
-axum = "0.7"
-axum-extra = "0.9"
+axum = "0.8"
+axum-extra = "0.12"
 tower = "0.4"
 tower-http = { version = "0.5", features = ["fs", "cors", "trace"] }
 serde = { version = "1.0", features = ["derive"] }
