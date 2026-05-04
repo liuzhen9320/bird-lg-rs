@@ -1,6 +1,7 @@
 # 🦅 Bird-lg-rs
 
-Another blazing-fast Rust implementation of [bird-lg-go](https://github.com/xddxdd/bird-lg-go), delivering a complete Bird Looking Glass solution with enhanced performance and reliability. This project serves as a drop-in replacement for `bird-lg-go`, maintaining full API compatibility while leveraging Rust's superior performance characteristics.
+Another blazing-fast Rust implementation of [bird-lg-go](https://github.com/xddxdd/bird-lg-go), delivering a complete Bird Looking Glass solution with enhanced performance and reliability.
+This project serves as a drop-in replacement for `bird-lg-go`, maintaining full API compatibility while leveraging Rust's superior performance characteristics.
 
 ## ✨ Features
 
@@ -33,27 +34,27 @@ The frontend delivers an intuitive web interface enabling users to monitor BGP s
 
 All configuration options maintain complete compatibility with bird-lg-go:
 
-| Config Key | Parameter | Environment Variable | Description |
-| ---------- | --------- | -------------------- | ----------- |
-| servers | --servers | BIRDLG_SERVERS | server name prefixes, separated by comma |
-| domain | --domain | BIRDLG_DOMAIN | server name domain suffixes |
-| listen | --listen | BIRDLG_LISTEN | address bird-lg is listening on (default "5000") |
-| proxy_port | --proxy-port | BIRDLG_PROXY_PORT | port bird-lgproxy is running on (default 8000) |
-| whois | --whois | BIRDLG_WHOIS | whois server for queries (default "whois.dn42") |
-| dns_interface | --dns-interface | BIRDLG_DNS_INTERFACE | dns zone to query ASN information (default "asn.cymru.com") |
-| bgpmap_info | --bgpmap-info | BIRDLG_BGPMAP_INFO | the infos displayed in bgpmap, separated by comma (default "asn,as-name,ASName,descr") |
-| title_brand | --title-brand | BIRDLG_TITLE_BRAND | prefix of page titles in browser tabs (default "Bird-lg Rust") |
-| navbar_brand | --navbar-brand | BIRDLG_NAVBAR_BRAND | brand to show in the navigation bar (default "Bird-lg Rust") |
-| navbar_brand_url | --navbar-brand-url | BIRDLG_NAVBAR_BRAND_URL | the url of the brand to show in the navigation bar (default "/") |
-| navbar_all_servers | --navbar-all-servers | BIRDLG_NAVBAR_ALL_SERVERS | the text of "All servers" button in the navigation bar (default "ALL Servers") |
-| navbar_all_url | --navbar-all-url | BIRDLG_NAVBAR_ALL_URL | the URL of "All servers" button (default "all") |
-| net_specific_mode | --net-specific-mode | BIRDLG_NET_SPECIFIC_MODE | apply network-specific changes for some networks |
-| protocol_filter | --protocol-filter | BIRDLG_PROTOCOL_FILTER | protocol types to show in summary tables (comma separated list) |
-| name_filter | --name-filter | BIRDLG_NAME_FILTER | protocol names to hide in summary tables (RE2 syntax) |
-| timeout | --timeout | BIRDLG_TIMEOUT | time before request timed out, in seconds (default 120) |
-| telegram_bot_name | --telegram-bot-name | BIRDLG_TELEGRAM_BOT_NAME | telegram bot name (default "") |
-| auth_enabled | --auth-enabled | BIRDLG_AUTH_ENABLED | enable token-based authentication for proxy requests (default false) |
-| auth_token | --auth-token | BIRDLG_AUTH_TOKEN | authentication token for proxy requests |
+| Config Key         | Parameter            | Environment Variable      | Description                                                                            |
+| ------------------ | -------------------- | ------------------------- | -------------------------------------------------------------------------------------- |
+| servers            | --servers            | BIRDLG_SERVERS            | server name prefixes, separated by comma                                               |
+| domain             | --domain             | BIRDLG_DOMAIN             | server name domain suffixes                                                            |
+| listen             | --listen             | BIRDLG_LISTEN             | address bird-lg is listening on (default "5000")                                       |
+| proxy_port         | --proxy-port         | BIRDLG_PROXY_PORT         | port bird-lgproxy is running on (default 8000)                                         |
+| whois              | --whois              | BIRDLG_WHOIS              | whois server for queries (default "whois.dn42")                                        |
+| dns_interface      | --dns-interface      | BIRDLG_DNS_INTERFACE      | dns zone to query ASN information (default "asn.cymru.com")                            |
+| bgpmap_info        | --bgpmap-info        | BIRDLG_BGPMAP_INFO        | the infos displayed in bgpmap, separated by comma (default "asn,as-name,ASName,descr") |
+| title_brand        | --title-brand        | BIRDLG_TITLE_BRAND        | prefix of page titles in browser tabs (default "Bird-lg Rust")                         |
+| navbar_brand       | --navbar-brand       | BIRDLG_NAVBAR_BRAND       | brand to show in the navigation bar (default "Bird-lg Rust")                           |
+| navbar_brand_url   | --navbar-brand-url   | BIRDLG_NAVBAR_BRAND_URL   | the url of the brand to show in the navigation bar (default "/")                       |
+| navbar_all_servers | --navbar-all-servers | BIRDLG_NAVBAR_ALL_SERVERS | the text of "All servers" button in the navigation bar (default "ALL Servers")         |
+| navbar_all_url     | --navbar-all-url     | BIRDLG_NAVBAR_ALL_URL     | the URL of "All servers" button (default "all")                                        |
+| net_specific_mode  | --net-specific-mode  | BIRDLG_NET_SPECIFIC_MODE  | apply network-specific changes for some networks                                       |
+| protocol_filter    | --protocol-filter    | BIRDLG_PROTOCOL_FILTER    | protocol types to show in summary tables (comma separated list)                        |
+| name_filter        | --name-filter        | BIRDLG_NAME_FILTER        | protocol names to hide in summary tables (RE2 syntax)                                  |
+| timeout            | --timeout            | BIRDLG_TIMEOUT            | time before request timed out, in seconds (default 120)                                |
+| telegram_bot_name  | --telegram-bot-name  | BIRDLG_TELEGRAM_BOT_NAME  | telegram bot name (default "")                                                         |
+| auth_enabled       | --auth-enabled       | BIRDLG_AUTH_ENABLED       | enable token-based authentication for proxy requests (default false)                   |
+| auth_token         | --auth-token         | BIRDLG_AUTH_TOKEN         | authentication token for proxy requests                                                |
 
 ### 💡 Example Usage
 
@@ -69,18 +70,18 @@ The proxy component provides a robust backend API for BIRD commands and comprehe
 
 All configuration parameters maintain full compatibility with bird-lg-go:
 
-| Config Key | Parameter | Environment Variable | Description |
-| ---------- | --------- | -------------------- | ----------- |
-| allowed | --allowed | ALLOWED_IPS | IPs or networks allowed to access this proxy, separated by commas |
-| bird | --bird | BIRD_SOCKET | socket file for bird (default "/var/run/bird/bird.ctl") |
-| listen | --listen | BIRDLG_PROXY_PORT | listen address (default "8000") |
-| traceroute_bin | --traceroute-bin | BIRDLG_TRACEROUTE_BIN | traceroute binary file |
-| traceroute_flags | --traceroute-flags | BIRDLG_TRACEROUTE_FLAGS | traceroute flags, supports multiple flags separated with space |
-| traceroute_raw | --traceroute-raw | BIRDLG_TRACEROUTE_RAW | whether to display traceroute outputs raw (default false) |
-| traceroute_max_concurrent | --traceroute-max-concurrent | BIRDLG_TRACEROUTE_MAX_CONCURRENT | maximum number of concurrent traceroute requests (default 10) |
-| bird_restrict_cmds | --bird-restrict-cmds | BIRDLG_BIRD_RESTRICT_CMDS | restrict Bird queries to show protocols and show route commands (default true) |
-| auth_enabled | --auth-enabled | BIRDLG_AUTH_ENABLED | enable token-based authentication (default false) |
-| auth_token | --auth-token | BIRDLG_AUTH_TOKEN | authentication token for API access |
+| Config Key                | Parameter                   | Environment Variable             | Description                                                                    |
+| ------------------------- | --------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
+| allowed                   | --allowed                   | ALLOWED_IPS                      | IPs or networks allowed to access this proxy, separated by commas              |
+| bird                      | --bird                      | BIRD_SOCKET                      | socket file for bird (default "/var/run/bird/bird.ctl")                        |
+| listen                    | --listen                    | BIRDLG_PROXY_PORT                | listen address (default "8000")                                                |
+| traceroute_bin            | --traceroute-bin            | BIRDLG_TRACEROUTE_BIN            | traceroute binary file                                                         |
+| traceroute_flags          | --traceroute-flags          | BIRDLG_TRACEROUTE_FLAGS          | traceroute flags, supports multiple flags separated with space                 |
+| traceroute_raw            | --traceroute-raw            | BIRDLG_TRACEROUTE_RAW            | whether to display traceroute outputs raw (default false)                      |
+| traceroute_max_concurrent | --traceroute-max-concurrent | BIRDLG_TRACEROUTE_MAX_CONCURRENT | maximum number of concurrent traceroute requests (default 10)                  |
+| bird_restrict_cmds        | --bird-restrict-cmds        | BIRDLG_BIRD_RESTRICT_CMDS        | restrict Bird queries to show protocols and show route commands (default true) |
+| auth_enabled              | --auth-enabled              | BIRDLG_AUTH_ENABLED              | enable token-based authentication (default false)                              |
+| auth_token                | --auth-token                | BIRDLG_AUTH_TOKEN                | authentication token for API access                                            |
 
 ### 💡 Example Usage
 
@@ -139,7 +140,7 @@ All REST API endpoints maintain full compatibility with bird-lg-go, ensuring exi
 
 ## 📄 License
 
-GPL 3.0 - Maintaining consistency with the original `bird-lg-go` license
+GPL 3.0
 
 ## 🙏 Credits
 
