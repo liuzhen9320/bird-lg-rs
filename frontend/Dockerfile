@@ -1,5 +1,5 @@
 # Build stage - Alpine with Rust
-FROM alpine:3.20 AS builder
+FROM alpine:3.23 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -27,7 +27,7 @@ COPY frontend ./frontend
 RUN cd frontend && cargo build --release --bin bird-lg-rs
 
 # Runtime stage - Alpine
-FROM alpine:3.20
+FROM alpine:3.23
 
 # Install runtime dependencies
 RUN apk add --no-cache \
