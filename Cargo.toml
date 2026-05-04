@@ -26,7 +26,7 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tera = "1.19"
 url = "2.0"
 regex = "1.0"
-reqwest = { version = "0.13", features = ["json"] }
+reqwest = { version = "0.13", features = ["json", "query"] }
 base64 = "0.22"
 ipnet = "2.9"
 html-escape = "0.2"
