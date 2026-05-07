@@ -166,10 +166,17 @@ pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
         ""
     };
     
-    // Parse JSON body
-    let body_bytes = match axum::body::to_bytes(request.into_body(), usize::MAX).await {
+    // Parse JSON body with size limit (100KB)
+    const MAX_BODY_SIZE: usize = 100 * 1024;
+    let body_bytes = match axum::body::to_bytes(request.into_body(), MAX_BODY_SIZE).await {
         Ok(bytes) => bytes,
-        Err(_) => return (StatusCode::BAD_REQUEST, "Failed to read body").into_response(),
+        Err(err) => {
+            use std::error::Error;
+            if err.source().is_some_and(|s| s.is::<http_body_util::LengthLimitError>()) {
+                return (StatusCode::PAYLOAD_TOO_LARGE, "Request body too large").into_response();
+            }
+            return (StatusCode::BAD_REQUEST, "Failed to read body").into_response();
+        }
     };
     
     let webhook_request: TgWebhookRequest = match serde_json::from_slice(&body_bytes) {
@@ -199,7 +206,7 @@ pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
     let servers = if servers_path.is_empty() {
         settings.servers.clone()
     } else {
-        servers_path.split('+').map(|s| s.to_string()).collect()
+        settings.resolve_servers_from_display_names(servers_path)
     };
     
     // Parse target from command

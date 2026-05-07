@@ -1,4 +1,5 @@
 use axum::{
+    middleware,
     routing::get,
     Router,
 };
@@ -36,6 +37,7 @@ mod whois;
 mod api;
 mod telegram;
 mod static_files;
+mod csp;
 
 use settings::Settings;
 
@@ -238,6 +240,7 @@ async fn build_router() -> Router {
         
         .layer(
             ServiceBuilder::new()
+                .layer(middleware::from_fn(csp::csp_middleware))
                 .layer(TraceLayer::new_for_http())
         )
 }

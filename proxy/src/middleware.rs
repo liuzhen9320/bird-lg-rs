@@ -9,20 +9,19 @@ use tracing::{debug};
 use crate::settings::Settings;
 
 pub async fn access_control(
-    ConnectInfo(addr): ConnectInfo<SocketAddr>,
+    connect_info: Option<ConnectInfo<SocketAddr>>,
     request: Request,
     next: Next,
 ) -> Result<Response, Response> {
     let settings = Settings::global();
-    
-    // Get IP address from the connection
-    let remote_ip = addr.ip().to_string();
 
-    debug!("Request IP: {}", remote_ip);
-
-    // Check IP access control
-    if !settings.has_access(&remote_ip) {
-        return Err((StatusCode::FORBIDDEN, "403 Forbidden\n").into_response());
+    // Check IP access control (TCP connections only; Unix sockets are local)
+    if let Some(ConnectInfo(addr)) = connect_info {
+        let remote_ip = addr.ip().to_string();
+        debug!("Request IP: {}", remote_ip);
+        if !settings.has_access(&remote_ip) {
+            return Err((StatusCode::FORBIDDEN, "403 Forbidden\n").into_response());
+        }
     }
 
     // Check token authentication if enabled
