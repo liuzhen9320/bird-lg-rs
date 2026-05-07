@@ -5,18 +5,17 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use std::net::SocketAddr;
-use tracing::{debug};
+use tracing::debug;
 use crate::settings::Settings;
 
 pub async fn access_control(
-    connect_info: Option<ConnectInfo<SocketAddr>>,
     request: Request,
     next: Next,
 ) -> Result<Response, Response> {
     let settings = Settings::global();
 
     // Check IP access control (TCP connections only; Unix sockets are local)
-    if let Some(ConnectInfo(addr)) = connect_info {
+    if let Some(ConnectInfo(addr)) = request.extensions().get::<ConnectInfo<SocketAddr>>() {
         let remote_ip = addr.ip().to_string();
         debug!("Request IP: {}", remote_ip);
         if !settings.has_access(&remote_ip) {

@@ -1,0 +1,73 @@
+# eslint-disable yml/no-empty-mapping-value
+name: Pin Cargo.lock
+
+on:
+  workflow_dispatch:
+    inputs:
+      update:
+        type: boolean
+        description: Run `cargo update` (update all deps to latest compatible)
+        required: false
+        default: false
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # Job  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  pin-lockfile:
+    name: job ❯ Pin Cargo.lock
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      # ─────────────────────────────────────────────────────
+      - name: Bootstrap ❯❯ actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          fetch-depth: 1
+
+      - name: Bootstrap ❯❯ Setup Rust
+        uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8 # stable
+        with:
+          toolchain: stable
+
+      - name: Bootstrap ❯❯ Debug ❯❯ Show version information (Rust, cargo, GCC)
+        run: |
+          gcc --version || true
+          rustup -V
+          rustup toolchain list
+          rustup default
+          cargo -V
+          rustc -V
+
+      - name: Bootstrap ❯❯ Restore Rust Cache
+        uses: Swatinem/rust-cache@e18b497796c12c097a38f9edb9d0641fb99eee32 # v2
+
+      - name: Run ❯❯ Pin Cargo.lock
+        run: |
+          if [ "${{ github.event.inputs.update }}" = "true" ]; then
+            echo "🔄 Updating all dependencies..."
+            cargo update
+          else
+            echo "📌 Generating lockfile from current Cargo.toml..."
+            cargo generate-lockfile
+          fi
+          echo "✅ Lockfile done"
+
+      - name: Run ❯❯ Commit & Push
+        run: |
+          git config user.name "HelloTools-bot"
+          git config user.email "bot@932.moe"
+          git add Cargo.lock
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            if [ "${{ github.event.inputs.update }}" = "true" ]; then
+              MSG="chore: update Cargo.lock"
+            else
+              MSG="chore: pin Cargo.lock"
+            fi
+            git commit -m "$MSG | $(date +'%Y-%m-%d %H:%M:%S') | $(git status --porcelain | wc -l) files"
+            git push
+            echo "✅ Cargo.lock committed & pushed"
+          fi
