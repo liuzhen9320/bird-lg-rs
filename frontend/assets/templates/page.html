@@ -75,13 +75,21 @@ function goto() {
 	let server = $('[name="server"]').val();
 	let target = $('[name="target"]').val();
 	let url = "";
+	const allowedActions = new Set(["whois", "summary", "ping", "dns"]);
+
+	if (!allowedActions.has(action)) {
+		return;
+	}
+
+	const encodedServer = encodeURIComponent(server || "");
+	const encodedTarget = encodeURIComponent(target || "");
 
 	if (action == "whois") {
-		url = "/" + action + "/" + target;
+		url = "/" + action + "/" + encodedTarget;
 	} else if (action == "summary") {
-		url = "/" + action + "/" + server + "/";
+		url = "/" + action + "/" + encodedServer + "/";
 	} else {
-		url = "/" + action + "/" + server + "/" + target;
+		url = "/" + action + "/" + encodedServer + "/" + encodedTarget;
 	}
 
 	window.location.href = url;
