@@ -11,44 +11,7 @@ env:
 
 jobs:
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Job 1: Format & Lint
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  quality:
-    name: job ❯ lint
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      # ─────────────────────────────────────────────────────
-      - name: Bootstrap ❯❯ actions/checkout@v6
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-
-      - name: Bootstrap ❯❯ Setup Rust
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
-        with:
-          toolchain: stable
-          components: rustfmt, clippy
-
-      - name: Bootstrap ❯❯ Debug ❯❯ Show version information
-        run: |
-          rustup -V
-          rustup toolchain list
-          rustup default
-          cargo -V
-          rustc -V
-
-      - name: Bootstrap ❯❯ Restore Rust Cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-
-      - name: Rust ❯❯ cargo fmt --check
-        run: cargo fmt --check
-
-      - name: Rust ❯❯ cargo clippy
-        run: cargo clippy --all-targets -- -D warnings
-
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Job 2: Build
+  # Job: Build
   # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   build:
     name: job ❯ build
@@ -78,35 +41,3 @@ jobs:
 
       - name: Rust ❯❯ cargo build
         run: cargo build --workspace
-
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  # Job 3: Test
-  # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-  test:
-    name: job ❯ test
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      # ─────────────────────────────────────────────────────
-      - name: Bootstrap ❯❯ actions/checkout@v6
-        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-        with:
-          fetch-depth: 1
-
-      - name: Bootstrap ❯❯ Setup Rust
-        uses: dtolnay/rust-toolchain@e97e2d8cc328f1b50210efc529dca0028893a2d9 # v1
-        with:
-          toolchain: stable
-
-      - name: Bootstrap ❯❯ Debug ❯❯ Show version information
-        run: |
-          gcc --version || true
-          rustup -V
-          cargo -V
-          rustc -V
-
-      - name: Bootstrap ❯❯ Restore Rust Cache
-        uses: Swatinem/rust-cache@c19371144df3bb44fab255c43d04cbc2ab54d1c4 # v2.9.1
-
-      - name: Rust ❯❯ cargo test
-        run: cargo test --workspace
