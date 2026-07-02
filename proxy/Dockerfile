@@ -1,5 +1,5 @@
 # Build stage - Alpine with Rust
-FROM alpine:3.23 AS builder
+FROM alpine:3.24 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -27,7 +27,7 @@ COPY proxy ./proxy
 RUN cd proxy && cargo build --release --bin bird-lgproxy-rs
 
 # Runtime stage - Alpine
-FROM alpine:3.23
+FROM alpine:3.24
 
 # Install runtime dependencies
 RUN apk add --no-cache \
