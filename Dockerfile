@@ -6,7 +6,7 @@
 ARG SERVICE=proxy
 
 # Build stage - Alpine with Rust
-FROM alpine:3.23 AS builder
+FROM alpine:3.24 AS builder
 
 # Install build dependencies
 RUN apk add --no-cache \
@@ -51,7 +51,7 @@ RUN echo "Building service: $SERVICE" && \
     fi
 
 # Proxy runtime stage
-FROM alpine:3.23 AS proxy-runtime
+FROM alpine:3.24 AS proxy-runtime
 
 # Install runtime dependencies for proxy
 RUN apk add --no-cache \
@@ -75,7 +75,7 @@ EXPOSE 8000
 CMD ["bird-lgproxy-rs"]
 
 # Frontend runtime stage
-FROM alpine:3.23 AS frontend-runtime
+FROM alpine:3.24 AS frontend-runtime
 
 # Install runtime dependencies for frontend
 RUN apk add --no-cache \
