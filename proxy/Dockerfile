@@ -9,7 +9,7 @@ RUN apk add --no-cache \
     pkgconfig
 
 # Install Rust
-RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.87.0
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain 1.97.1
 ENV PATH="/root/.cargo/bin:${PATH}"
 
 WORKDIR /app

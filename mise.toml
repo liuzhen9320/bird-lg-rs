@@ -1,0 +1,103 @@
+[tools]
+miniserve = "0.35.0"
+rust = "1.97.1"
+
+[tasks.build]
+description = "Build the whole Rust workspace"
+run = "cargo build --workspace"
+sources = [
+  "Cargo.lock",
+  "Cargo.toml",
+  "proxy/Cargo.toml",
+  "proxy/src/**/*.rs",
+  "frontend/Cargo.toml",
+  "frontend/src/**/*.rs",
+  "frontend/assets/**/*",
+]
+outputs = [
+  "target/debug/bird-lg-rs",
+  "target/debug/bird-lgproxy-rs",
+]
+
+[tasks."build:release"]
+description = "Build release binaries for the whole Rust workspace"
+run = "cargo build --release --workspace"
+sources = [
+  "Cargo.lock",
+  "Cargo.toml",
+  "proxy/Cargo.toml",
+  "proxy/src/**/*.rs",
+  "frontend/Cargo.toml",
+  "frontend/src/**/*.rs",
+  "frontend/assets/**/*",
+]
+outputs = [
+  "target/release/bird-lg-rs",
+  "target/release/bird-lgproxy-rs",
+]
+
+[tasks.check]
+description = "Check the whole Rust workspace"
+run = "cargo check --workspace --all-targets --all-features"
+
+[tasks.fmt]
+description = "Format Rust sources"
+run = "cargo fmt --all"
+
+[tasks."fmt:check"]
+description = "Check Rust formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks.clippy]
+description = "Lint the whole Rust workspace with clippy"
+run = "cargo clippy --workspace --all-targets --all-features -- -D warnings"
+
+[tasks.lint]
+description = "Run all lint checks"
+depends = ["fmt:check", "clippy"]
+
+[tasks.test]
+description = "Run workspace tests"
+run = "cargo test --workspace --all-targets --all-features"
+
+[tasks.audit]
+description = "Audit Rust dependencies with cargo-audit"
+run = '''
+#!/usr/bin/env bash
+set -euo pipefail
+
+if ! cargo audit --version >/dev/null 2>&1; then
+  cargo install cargo-audit --locked
+fi
+
+cargo audit
+'''
+
+[tasks.ci]
+description = "Run local CI checks"
+depends = ["build", "lint", "test"]
+
+[tasks.docker]
+description = "Build both Docker images"
+depends = ["docker:proxy", "docker:frontend"]
+
+[tasks."docker:proxy"]
+description = "Build the proxy Docker image"
+run = "docker build --target proxy-runtime --build-arg SERVICE=proxy -t bird-lg-proxy:latest ."
+
+[tasks."docker:frontend"]
+description = "Build the frontend Docker image"
+run = "docker build --target frontend-runtime --build-arg SERVICE=frontend -t bird-lg-frontend:latest ."
+
+[tasks."docs:build"]
+description = "Generate workspace Rust documentation"
+run = "cargo doc --workspace --no-deps"
+
+[tasks."docs:serve"]
+description = "Serve generated Rust documentation on all interfaces"
+run = "miniserve target/doc --interfaces 0.0.0.0 --port 8888 --index index.html"
+
+[tasks.docs]
+description = "Build and serve workspace Rust documentation"
+depends = ["docs:build"]
+run = "mise run docs:serve"

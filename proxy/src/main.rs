@@ -14,10 +14,7 @@ use tracing::{info, warn};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[cfg(unix)]
-use std::{
-    fs,
-    os::unix::fs::PermissionsExt,
-};
+use std::{fs, os::unix::fs::PermissionsExt};
 
 #[cfg(unix)]
 use tokio::net::UnixListener;
@@ -28,12 +25,16 @@ use tower::Service;
 #[cfg(unix)]
 use hyper::{body::Incoming, Request};
 
-mod settings;
 mod bird;
-mod traceroute;
 mod middleware;
+mod settings;
+mod traceroute;
 
 use settings::Settings;
+
+const BIRD_QUERY_REQUIRED_MESSAGE: &str = "Query parameter 'q' is required";
+const BIRD_QUERY_NOT_ALLOWED_MESSAGE: &str =
+    "Query not allowed. Only 'show protocols' and 'show route' commands are permitted.";
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -89,9 +90,39 @@ struct TracerouteQuery {
     q: String,
 }
 
+fn is_bird_command_allowed(query: &str) -> bool {
+    let query_lower = query.to_lowercase();
+    query_lower.starts_with("show protocols") || query_lower.starts_with("show route")
+}
+
+fn strip_control_chars(query: &str) -> String {
+    query.chars().filter(|c| !c.is_control()).collect()
+}
+
+fn prepare_bird_query(
+    query: &str,
+    restrict_cmds: bool,
+) -> Result<String, (StatusCode, &'static str)> {
+    if query.is_empty() {
+        return Err((StatusCode::BAD_REQUEST, BIRD_QUERY_REQUIRED_MESSAGE));
+    }
+
+    // Drop control characters from the query before restriction checks and execution.
+    let query = strip_control_chars(query);
+
+    if restrict_cmds && !is_bird_command_allowed(&query) {
+        return Err((StatusCode::BAD_REQUEST, BIRD_QUERY_NOT_ALLOWED_MESSAGE));
+    }
+
+    Ok(query)
+}
+
 // Default handler, returns project info
 async fn index_handler() -> impl IntoResponse {
-    (StatusCode::OK, "bird-lg-rs\n\nhttps://github.com/liuzhen9320/bird-lg-rs\n")
+    (
+        StatusCode::OK,
+        "bird-lg-rs\n\nhttps://github.com/liuzhen9320/bird-lg-rs\n",
+    )
 }
 
 // Invalid request handler for unmatched routes
@@ -100,22 +131,12 @@ async fn invalid_handler() -> impl IntoResponse {
 }
 
 // Handles BIRD queries
-async fn bird_handler(
-    Query(params): Query<BirdQuery>,
-) -> Result<impl IntoResponse, Response> {
-    if params.q.is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Query parameter 'q' is required").into_response());
-    }
-
+async fn bird_handler(Query(params): Query<BirdQuery>) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
-    if settings.bird_restrict_cmds {
-        let query_lower = params.q.to_lowercase();
-        if !query_lower.starts_with("show protocols") && !query_lower.starts_with("show route") {
-            return Err((StatusCode::BAD_REQUEST, "Query not allowed. Only 'show protocols' and 'show route' commands are permitted.").into_response());
-        }
-    }
+    let query = prepare_bird_query(&params.q, settings.bird_restrict_cmds)
+        .map_err(|(status, message)| (status, message).into_response())?;
 
-    match bird::execute_bird_command(&params.q).await {
+    match bird::execute_bird_command(&query).await {
         Ok(output) => Ok(output),
         Err(e) => {
             warn!("Bird command failed: {}", e);
@@ -146,31 +167,34 @@ async fn traceroute_handler(
 async fn create_unix_listener(socket_path: &str) -> anyhow::Result<()> {
     // Delete existing socket file, ignore errors
     let _ = fs::remove_file(socket_path);
-    
+
     let listener = UnixListener::bind(socket_path)?;
-    
+
     // Set socket permissions to 666 (readable and writable by all)
     if let Err(e) = fs::set_permissions(socket_path, fs::Permissions::from_mode(0o666)) {
         warn!("Failed to set socket permissions: {}", e);
     }
-    
+
     info!("Server started on Unix socket: {}", socket_path);
-    
+
     let app = build_router().await;
-    
+
     // Manually handle Unix socket connections
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
                 let app_clone = app.clone();
                 tokio::spawn(async move {
-                    let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
-                        app_clone.clone().call(request)
-                    });
-                    
-                    if let Err(err) = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
-                        .serve_connection(hyper_util::rt::TokioIo::new(stream), hyper_service)
-                        .await
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: Request<Incoming>| {
+                            app_clone.clone().call(request)
+                        });
+
+                    if let Err(err) = hyper_util::server::conn::auto::Builder::new(
+                        hyper_util::rt::TokioExecutor::new(),
+                    )
+                    .serve_connection(hyper_util::rt::TokioIo::new(stream), hyper_service)
+                    .await
                     {
                         warn!("Error serving connection: {:?}", err);
                     }
@@ -195,7 +219,7 @@ async fn build_router() -> Router {
         .layer(
             ServiceBuilder::new()
                 .layer(TraceLayer::new_for_http())
-                .layer(axum::middleware::from_fn(middleware::access_control))
+                .layer(axum::middleware::from_fn(middleware::access_control)),
         )
 }
 
@@ -210,7 +234,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let args = Args::parse();
-    
+
     // Initialize settings
     Settings::init(args).await?;
 
@@ -226,20 +250,97 @@ async fn main() -> anyhow::Result<()> {
         // Unix socket on Unix systems
         return create_unix_listener(&settings.listen).await;
     }
-    
+
     // TCP socket (default for non-Unix systems or TCP addresses on Unix)
     let addr = if settings.listen.contains(':') {
         settings.listen.parse::<SocketAddr>()?
     } else {
         format!("0.0.0.0:{}", settings.listen).parse::<SocketAddr>()?
     };
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("Server started on TCP: {}", addr);
-    
-    let app = build_router().await
+
+    let app = build_router()
+        .await
         .into_make_service_with_connect_info::<SocketAddr>();
     axum::serve(listener, app).await?;
 
     Ok(())
-} 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn strip_control_chars_removes_unicode_control_characters() {
+        let cases = [
+            (
+                "no control chars",
+                "show route for 1.2.3.4",
+                "show route for 1.2.3.4",
+            ),
+            (
+                "newline without space",
+                "show route\nshow memory",
+                "show routeshow memory",
+            ),
+            (
+                "newline with space",
+                "show route \nshow memory",
+                "show route show memory",
+            ),
+            (
+                "carriage return without space",
+                "show route\rshow memory",
+                "show routeshow memory",
+            ),
+            (
+                "carriage return with space",
+                "show route \rshow memory",
+                "show route show memory",
+            ),
+            (
+                "tab without space",
+                "show route\tshow memory",
+                "show routeshow memory",
+            ),
+            (
+                "tab with space",
+                "show route \tshow memory",
+                "show route show memory",
+            ),
+            ("null byte", "show\0route", "showroute"),
+            ("bel and del", "show\u{0007}route\u{007f}", "showroute"),
+            ("multiple control chars", "a\nb\rc\td\0e", "abcde"),
+            ("only control chars", "\n\r\t\0", ""),
+            ("empty string", "", ""),
+        ];
+
+        for (name, input, expected) in cases {
+            assert_eq!(strip_control_chars(input), expected, "{name}");
+        }
+    }
+
+    #[test]
+    fn prepare_bird_query_strips_control_chars_before_restricted_check() {
+        let query = prepare_bird_query("show route \nshow memory", true).unwrap();
+        assert_eq!(query, "show route show memory");
+    }
+
+    #[test]
+    fn prepare_bird_query_strips_control_chars_when_unrestricted() {
+        let query = prepare_bird_query("show route \nshow memory", false).unwrap();
+        assert_eq!(query, "show route show memory");
+    }
+
+    #[test]
+    fn prepare_bird_query_rejects_forbidden_restricted_command() {
+        let err = prepare_bird_query("configure", true).unwrap_err();
+        assert_eq!(
+            err,
+            (StatusCode::BAD_REQUEST, BIRD_QUERY_NOT_ALLOWED_MESSAGE)
+        );
+    }
+}

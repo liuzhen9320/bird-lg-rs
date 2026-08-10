@@ -1,0 +1,21 @@
+
+$:
+  vscode:
+    - docker:
+        image: cnbcool/default-dev-env:latest
+      services:
+        - vscode
+        - docker
+      stages:
+        - name: mise
+          script: |
+            export MISE_INSTALL_FROM_GITHUB=1
+            curl https://mise.run | sh
+            echo "eval \"\$(/root/.local/bin/mise activate bash)\"" >> "/root/.bashrc"
+            echo "eval \"\$(/root/.local/bin/mise activate zsh)\"" >> "/root/.zshrc"
+        - name: mise install
+          script: |
+            apt-get update || true
+            apt-get install libatomic1 gcc -y || true
+            eval "$(/root/.local/bin/mise activate bash)"
+            mise install

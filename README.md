@@ -1,9 +1,9 @@
-# 🦅 Bird-lg-rs
+# Bird-lg-rs
 
 Another blazing-fast Rust implementation of [bird-lg-go](https://github.com/xddxdd/bird-lg-go), delivering a complete Bird Looking Glass solution with enhanced performance and reliability.
 This project serves as a drop-in replacement for `bird-lg-go`, maintaining full API compatibility while leveraging Rust's superior performance characteristics.
 
-## ✨ Features
+## Features
 
 - **🔄 Complete compatibility** with `bird-lg-go` - seamless migration path
 - **🏗️ Frontend and Proxy separation** - maintains the proven architecture
@@ -20,7 +20,7 @@ This project serves as a drop-in replacement for `bird-lg-go`, maintaining full 
 - **🛡️ Memory safety** and enhanced reliability guarantees
 - **🔧 Zero-configuration migration** from existing bird-lg-go deployments
 
-## 🔨 Build Instructions
+## Build Instructions
 
 Ensure you have **Docker Engine** installed on your system.
 
@@ -56,17 +56,17 @@ All configuration options maintain complete compatibility with bird-lg-go:
 | auth_enabled       | --auth-enabled       | BIRDLG_AUTH_ENABLED       | enable token-based authentication for proxy requests (default false)                   |
 | auth_token         | --auth-token         | BIRDLG_AUTH_TOKEN         | authentication token for proxy requests                                                |
 
-### 💡 Example Usage
+### Example Usage
 
 ```bash
 ./bird-lg-rs --servers=server1,server2 --domain=example.com --proxy-port=8000 --auth-enabled --auth-token "my-secret-token"
 ```
 
-## 🔌 Proxy
+## Proxy
 
 The proxy component provides a robust backend API for BIRD commands and comprehensive traceroute functionality, serving as the bridge between the frontend interface and your network infrastructure.
 
-### ⚙️ Configuration
+### Configuration
 
 All configuration parameters maintain full compatibility with bird-lg-go:
 
@@ -83,13 +83,13 @@ All configuration parameters maintain full compatibility with bird-lg-go:
 | auth_enabled              | --auth-enabled              | BIRDLG_AUTH_ENABLED              | enable token-based authentication (default false)                              |
 | auth_token                | --auth-token                | BIRDLG_AUTH_TOKEN                | authentication token for API access                                            |
 
-### 💡 Example Usage
+### Example Usage
 
 ```bash
 ./bird-lgproxy-rs --bird /run/bird.ctl --listen 8000 --auth-enabled --auth-token "my-secret-token"
 ```
 
-## 🚀 Migration from `bird-lg-go`
+## Migration from `bird-lg-go`
 
 This project is engineered as a **seamless drop-in replacement** for bird-lg-go. Migration is straightforward:
 
@@ -99,7 +99,7 @@ This project is engineered as a **seamless drop-in replacement** for bird-lg-go.
 
 All command-line arguments, environment variables, and API endpoints remain completely identical, ensuring zero downtime migration.
 
-## 🔐 Authentication
+## Authentication
 
 Bird-lg-rs supports token-based authentication to secure communication between the frontend and proxy components:
 
@@ -130,7 +130,7 @@ export BIRDLG_AUTH_ENABLED=true
 export BIRDLG_AUTH_TOKEN="your-secret-token"
 ```
 
-## 🔌 API Compatibility
+## API Compatibility
 
 All REST API endpoints maintain full compatibility with bird-lg-go, ensuring existing integrations continue to function seamlessly:
 
@@ -138,17 +138,13 @@ All REST API endpoints maintain full compatibility with bird-lg-go, ensuring exi
 - `/api/traceroute/:servers/:target` - Perform traceroute operations from multiple vantage points
 - `/api/whois/:target` - Query whois information for IP addresses and domains
 
-## 📄 License
+## License
 
 GPL 3.0
 
-## 🙏 Credits
+## Credits
 
 - [bird-lg-rs](https://github.com/pysio2007/bird-lg-rs) - The original Rust implementation by Pysio
 - [bird-lg-go](https://github.com/xddxdd/bird-lg-go) - The original Go implementation that inspired this project
 - [bird-lg](https://github.com/sileht/bird-lg) - The foundational Python implementation
 - All contributors to the bird-lg ecosystem who have made this project possible
-
----
-
-Built with ❤️ in Rust for the networking community
