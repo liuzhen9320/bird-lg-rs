@@ -1,6 +1,6 @@
 [tools]
 miniserve = "0.35.0"
-rust = "1.97.1"
+rust = "1.98.0"
 
 [tasks.build]
 description = "Build the whole Rust workspace"
