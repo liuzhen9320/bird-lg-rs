@@ -170,163 +170,172 @@ async fn build_router() -> Router {
         .route("/summary", get(handlers::redirect_to_summary))
         .route("/summary/", get(handlers::redirect_to_summary))
         // Bird protocol queries
-        .route("/summary/:servers", get(handlers::bird_summary))
-        .route("/summary/:servers/", get(handlers::bird_summary))
-        .route("/detail/:servers/:protocol", get(handlers::bird_detail))
-        .route("/detail/:servers/:protocol/", get(handlers::bird_detail))
-        .route("/route/:servers/:route", get(handlers::bird_route))
-        .route("/route/:servers/:route/", get(handlers::bird_route))
-        .route("/route_all/:servers/:route", get(handlers::bird_route_all))
-        .route("/route_all/:servers/:route/", get(handlers::bird_route_all))
+        .route("/summary/{servers}", get(handlers::bird_summary))
+        .route("/summary/{servers}/", get(handlers::bird_summary))
+        .route("/detail/{servers}/{protocol}", get(handlers::bird_detail))
+        .route("/detail/{servers}/{protocol}/", get(handlers::bird_detail))
+        .route("/route/{servers}/{route}", get(handlers::bird_route))
+        .route("/route/{servers}/{route}/", get(handlers::bird_route))
         .route(
-            "/route_where/:servers/:prefix",
+            "/route_all/{servers}/{route}",
+            get(handlers::bird_route_all),
+        )
+        .route(
+            "/route_all/{servers}/{route}/",
+            get(handlers::bird_route_all),
+        )
+        .route(
+            "/route_where/{servers}/{prefix}",
             get(handlers::bird_route_where),
         )
         .route(
-            "/route_where/:servers/:prefix/",
+            "/route_where/{servers}/{prefix}/",
             get(handlers::bird_route_where),
         )
         .route(
-            "/route_where_all/:servers/:prefix",
+            "/route_where_all/{servers}/{prefix}",
             get(handlers::bird_route_where_all),
         )
         .route(
-            "/route_where_all/:servers/:prefix/",
+            "/route_where_all/{servers}/{prefix}/",
             get(handlers::bird_route_where_all),
         )
         .route(
-            "/route_bgpmap/:servers/:route",
+            "/route_bgpmap/{servers}/{route}",
             get(handlers::bird_route_bgpmap),
         )
         .route(
-            "/route_bgpmap/:servers/:route/",
+            "/route_bgpmap/{servers}/{route}/",
             get(handlers::bird_route_bgpmap),
         )
         .route(
-            "/route_where_bgpmap/:servers/:prefix",
+            "/route_where_bgpmap/{servers}/{prefix}",
             get(handlers::bird_route_where_bgpmap),
         )
         .route(
-            "/route_where_bgpmap/:servers/:prefix/",
+            "/route_where_bgpmap/{servers}/{prefix}/",
             get(handlers::bird_route_where_bgpmap),
         )
         .route(
-            "/route_from_protocol/:servers/:protocol",
+            "/route_from_protocol/{servers}/{protocol}",
             get(handlers::bird_route_from_protocol),
         )
         .route(
-            "/route_from_protocol/:servers/:protocol/",
+            "/route_from_protocol/{servers}/{protocol}/",
             get(handlers::bird_route_from_protocol),
         )
         .route(
-            "/route_from_protocol_all/:servers/:protocol",
+            "/route_from_protocol_all/{servers}/{protocol}",
             get(handlers::bird_route_from_protocol_all),
         )
         .route(
-            "/route_from_protocol_all/:servers/:protocol/",
+            "/route_from_protocol_all/{servers}/{protocol}/",
             get(handlers::bird_route_from_protocol_all),
         )
         .route(
-            "/route_from_protocol_primary/:servers/:protocol",
+            "/route_from_protocol_primary/{servers}/{protocol}",
             get(handlers::bird_route_from_protocol_primary),
         )
         .route(
-            "/route_from_protocol_primary/:servers/:protocol/",
+            "/route_from_protocol_primary/{servers}/{protocol}/",
             get(handlers::bird_route_from_protocol_primary),
         )
         .route(
-            "/route_from_protocol_all_primary/:servers/:protocol",
+            "/route_from_protocol_all_primary/{servers}/{protocol}",
             get(handlers::bird_route_from_protocol_all_primary),
         )
         .route(
-            "/route_from_protocol_all_primary/:servers/:protocol/",
+            "/route_from_protocol_all_primary/{servers}/{protocol}/",
             get(handlers::bird_route_from_protocol_all_primary),
         )
         .route(
-            "/route_filtered_from_protocol/:servers/:protocol",
+            "/route_filtered_from_protocol/{servers}/{protocol}",
             get(handlers::bird_route_filtered_from_protocol),
         )
         .route(
-            "/route_filtered_from_protocol/:servers/:protocol/",
+            "/route_filtered_from_protocol/{servers}/{protocol}/",
             get(handlers::bird_route_filtered_from_protocol),
         )
         .route(
-            "/route_filtered_from_protocol_all/:servers/:protocol",
+            "/route_filtered_from_protocol_all/{servers}/{protocol}",
             get(handlers::bird_route_filtered_from_protocol_all),
         )
         .route(
-            "/route_filtered_from_protocol_all/:servers/:protocol/",
+            "/route_filtered_from_protocol_all/{servers}/{protocol}/",
             get(handlers::bird_route_filtered_from_protocol_all),
         )
         .route(
-            "/route_from_origin/:servers/:asn",
+            "/route_from_origin/{servers}/{asn}",
             get(handlers::bird_route_from_origin),
         )
         .route(
-            "/route_from_origin/:servers/:asn/",
+            "/route_from_origin/{servers}/{asn}/",
             get(handlers::bird_route_from_origin),
         )
         .route(
-            "/route_from_origin_all/:servers/:asn",
+            "/route_from_origin_all/{servers}/{asn}",
             get(handlers::bird_route_from_origin_all),
         )
         .route(
-            "/route_from_origin_all/:servers/:asn/",
+            "/route_from_origin_all/{servers}/{asn}/",
             get(handlers::bird_route_from_origin_all),
         )
         .route(
-            "/route_from_origin_primary/:servers/:asn",
+            "/route_from_origin_primary/{servers}/{asn}",
             get(handlers::bird_route_from_origin_primary),
         )
         .route(
-            "/route_from_origin_primary/:servers/:asn/",
+            "/route_from_origin_primary/{servers}/{asn}/",
             get(handlers::bird_route_from_origin_primary),
         )
         .route(
-            "/route_from_origin_all_primary/:servers/:asn",
+            "/route_from_origin_all_primary/{servers}/{asn}",
             get(handlers::bird_route_from_origin_all_primary),
         )
         .route(
-            "/route_from_origin_all_primary/:servers/:asn/",
+            "/route_from_origin_all_primary/{servers}/{asn}/",
             get(handlers::bird_route_from_origin_all_primary),
         )
         .route(
-            "/route_generic/:servers/:command",
+            "/route_generic/{servers}/{command}",
             get(handlers::bird_route_generic),
         )
         .route(
-            "/route_generic/:servers/:command/",
+            "/route_generic/{servers}/{command}/",
             get(handlers::bird_route_generic),
         )
-        .route("/generic/:servers/:command", get(handlers::bird_generic))
-        .route("/generic/:servers/:command/", get(handlers::bird_generic))
+        .route("/generic/{servers}/{command}", get(handlers::bird_generic))
+        .route("/generic/{servers}/{command}/", get(handlers::bird_generic))
         // Traceroute
-        .route("/traceroute/:servers/:target", get(handlers::traceroute))
-        .route("/traceroute/:servers/:target/", get(handlers::traceroute))
+        .route("/traceroute/{servers}/{target}", get(handlers::traceroute))
+        .route("/traceroute/{servers}/{target}/", get(handlers::traceroute))
         // Whois
-        .route("/whois/:target", get(handlers::whois))
-        .route("/whois/:target/", get(handlers::whois))
+        .route("/whois/{target}", get(handlers::whois))
+        .route("/whois/{target}/", get(handlers::whois))
         // API endpoints
-        .route("/api/bird/:servers/:command", get(api::bird_api))
-        .route("/api/bird/:servers/:command/", get(api::bird_api))
-        .route("/api/traceroute/:servers/:target", get(api::traceroute_api))
+        .route("/api/bird/{servers}/{command}", get(api::bird_api))
+        .route("/api/bird/{servers}/{command}/", get(api::bird_api))
         .route(
-            "/api/traceroute/:servers/:target/",
+            "/api/traceroute/{servers}/{target}",
             get(api::traceroute_api),
         )
-        .route("/api/whois/:target", get(api::whois_api))
-        .route("/api/whois/:target/", get(api::whois_api))
+        .route(
+            "/api/traceroute/{servers}/{target}/",
+            get(api::traceroute_api),
+        )
+        .route("/api/whois/{target}", get(api::whois_api))
+        .route("/api/whois/{target}/", get(api::whois_api))
         // Telegram bot webhook (if enabled)
         .route(
             "/telegram",
             get(telegram::telegram_webhook).post(telegram::telegram_webhook),
         )
         .route(
-            "/telegram/*servers",
+            "/telegram/{*servers}",
             get(telegram::telegram_webhook).post(telegram::telegram_webhook),
         )
         // Static assets
-        .route("/static/*path", get(static_files::serve_static))
+        .route("/static/{*path}", get(static_files::serve_static))
         .layer(
             ServiceBuilder::new()
                 .layer(middleware::from_fn(csp::csp_middleware))
@@ -427,6 +436,11 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[tokio::test]
+    async fn router_builds_without_panicking() {
+        let _ = build_router().await;
     }
 
     #[test]
