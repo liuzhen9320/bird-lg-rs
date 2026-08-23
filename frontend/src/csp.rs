@@ -6,8 +6,8 @@ use axum::{
 };
 
 const CSP_HEADER_VALUE: &str = "default-src 'self'; \
-    script-src 'self' 'unsafe-inline'; \
-    style-src 'self' 'unsafe-inline'; \
+    script-src 'self'; \
+    style-src 'self'; \
     img-src 'self' data:; \
     frame-ancestors 'none'; \
     base-uri 'self'; \
@@ -23,4 +23,16 @@ pub async fn csp_middleware(
         HeaderValue::from_static(CSP_HEADER_VALUE),
     );
     response
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn policy_disallows_inline_scripts_and_styles() {
+        assert!(!CSP_HEADER_VALUE.contains("'unsafe-inline'"));
+        assert!(CSP_HEADER_VALUE.contains("script-src 'self'"));
+        assert!(CSP_HEADER_VALUE.contains("style-src 'self'"));
+    }
 }

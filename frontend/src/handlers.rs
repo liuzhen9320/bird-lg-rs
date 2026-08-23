@@ -4,7 +4,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
 };
 use crate::settings::Settings;
-use crate::templates::{PageContext, BirdContext, WhoisContext, BgpmapContext};
+use crate::templates::{PageContext, BirdContext, WhoisContext, BgpmapContext, QueryErrorContext, TrustedHtml};
 use crate::{proxy_client, whois, bgpmap, templates, summary_parser};
 use base64::{Engine as _, engine::general_purpose};
 
@@ -150,7 +150,7 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
         return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
     
-    let mut content = String::new();
+    let mut content = Vec::new();
     
     for server in &server_list {
         let display_name = settings.get_server_display_name(server);
@@ -160,23 +160,22 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
                 let bird_context = BirdContext {
                     server_name: display_name,
                     target: target.clone(),
-                    result: format!("<pre>{}</pre>", html_escape::encode_text(&result)),
+                    result,
                 };
-                
-                match templates::render_bird(&bird_context) {
-                    Ok(rendered) => content.push_str(&rendered),
-                    Err(e) => content.push_str(&format!("<p>Template error: {}</p>", e)),
-                }
+                let rendered = templates::render_bird(&bird_context).map_err(template_error_response)?;
+                content.push(rendered);
             }
             Err(e) => {
-                content.push_str(&format!("<h2>{}: traceroute {}</h2><p>Error: {}</p>", display_name, target, e));
+                let rendered = render_traceroute_error(&display_name, &target, &e.to_string())
+                    .map_err(template_error_response)?;
+                content.push(rendered);
             }
         }
     }
     
-    let page_context = build_page_context("traceroute", &servers, &target, &content);
+    let page_context = build_page_context("traceroute", &servers, &target);
     
-    match templates::render_page(&page_context) {
+    match templates::render_page(&page_context, &content) {
         Ok(html) => Ok(Html(html)),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
     }
@@ -184,34 +183,23 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
 
 // Whois handler
 pub async fn whois(Path(target): Path<String>) -> Result<impl IntoResponse, Response> {
-    match whois::query(&target).await {
+    let content = match whois::query(&target).await {
         Ok(result) => {
             let whois_context = WhoisContext {
                 target: target.clone(),
-                result: format!("<pre>{}</pre>", html_escape::encode_text(&result)),
+                result,
             };
-            
-            let content = match templates::render_whois(&whois_context) {
-                Ok(rendered) => rendered,
-                Err(e) => format!("<p>Template error: {}</p>", e),
-            };
-            
-            let page_context = build_whois_page_context(&target, &content);
-            
-            match templates::render_page(&page_context) {
-                Ok(html) => Ok(Html(html)),
-                Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
-            }
+            templates::render_whois(&whois_context).map_err(template_error_response)?
         }
         Err(e) => {
-            let content = format!("<h2>whois {}</h2><p>Error: {}</p>", target, e);
-            let page_context = build_whois_page_context(&target, &content);
-            
-            match templates::render_page(&page_context) {
-                Ok(html) => Ok(Html(html)),
-                Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
-            }
+            render_whois_error(&target, &e.to_string()).map_err(template_error_response)?
         }
+    };
+    let page_context = build_whois_page_context(&target);
+
+    match templates::render_page(&page_context, &[content]) {
+        Ok(html) => Ok(Html(html)),
+        Err(e) => Err(template_error_response(e)),
     }
 }
 
@@ -229,39 +217,34 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
         return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
     
-    let mut content = String::new();
+    let mut content = Vec::new();
     
     for server in &server_list {
         let display_name = settings.get_server_display_name(server);
         
         match proxy_client::bird_query(server, &command).await {
             Ok(result) => {
-                let formatted_result = if option == "summary" && result.starts_with("Name") {
-                    format_summary_table(&result, server)
-                } else {
-                    format!("<pre>{}</pre>", html_escape::encode_text(&result))
-                };
-                
                 let bird_context = BirdContext {
                     server_name: display_name,
                     target: command.clone(),
-                    result: formatted_result,
+                    result,
                 };
-                
-                match templates::render_bird(&bird_context) {
-                    Ok(rendered) => content.push_str(&rendered),
-                    Err(e) => content.push_str(&format!("<p>Template error: {}</p>", e)),
-                }
+
+                let rendered = render_bird_result(&bird_context, option)
+                    .map_err(template_error_response)?;
+                content.push(rendered);
             }
             Err(e) => {
-                content.push_str(&format!("<h2>{}: {}</h2><p>Error: {}</p>", display_name, command, e));
+                let rendered = render_bird_error(&display_name, &command, &e.to_string())
+                    .map_err(template_error_response)?;
+                content.push(rendered);
             }
         }
     }
     
-    let page_context = build_page_context(option, &servers, &command, &content);
+    let page_context = build_page_context(option, &servers, &command);
     
-    match templates::render_page(&page_context) {
+    match templates::render_page(&page_context, &content) {
         Ok(html) => Ok(Html(html)),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
     }
@@ -297,21 +280,18 @@ async fn handle_bgpmap_command(servers: String, command: String, target: String)
         result: encoded_graph,
     };
     
-    let content = match templates::render_bgpmap(&bgpmap_context) {
-        Ok(rendered) => rendered,
-        Err(e) => format!("<p>Template error: {}</p>", e),
-    };
+    let content = templates::render_bgpmap(&bgpmap_context).map_err(template_error_response)?;
     
-    let page_context = build_page_context("bgpmap", &servers, &target, &content);
+    let page_context = build_page_context("bgpmap", &servers, &target);
     
-    match templates::render_page(&page_context) {
+    match templates::render_page(&page_context, &[content]) {
         Ok(html) => Ok(Html(html)),
         Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
     }
 }
 
 // Helper function to build page context
-fn build_page_context(option: &str, servers: &str, command: &str, content: &str) -> PageContext {
+fn build_page_context(option: &str, servers: &str, command: &str) -> PageContext {
     let settings = Settings::global();
     
     PageContext {
@@ -327,12 +307,11 @@ fn build_page_context(option: &str, servers: &str, command: &str, content: &str)
         url_server: servers.to_string(),
         url_command: command.to_string(),
         options: get_options(),
-        content: content.to_string(),
     }
 }
 
 // Helper function to build whois page context
-fn build_whois_page_context(target: &str, content: &str) -> PageContext {
+fn build_whois_page_context(target: &str) -> PageContext {
     let settings = Settings::global();
     
     PageContext {
@@ -348,7 +327,6 @@ fn build_whois_page_context(target: &str, content: &str) -> PageContext {
         url_server: settings.all_servers_display_string(),
         url_command: target.to_string(),
         options: get_options(),
-        content: content.to_string(),
     }
 }
 
@@ -380,21 +358,66 @@ fn get_options() -> Vec<(String, String)> {
     ]
 }
 
-// Format summary table using the new parser
-fn format_summary_table(result: &str, server: &str) -> String {
-    let settings = Settings::global();
-    let display_name = settings.get_server_display_name(server);
-    
-    match summary_parser::parse_summary(result, display_name) {
-        Ok(summary_context) => {
-            match templates::render_summary(&summary_context) {
-                Ok(rendered) => rendered,
-                Err(e) => format!("<p>Template error: {}</p>", e),
-            }
-        }
-        Err(_) => {
-            // Fallback to plain text if parsing fails
-            format!("<pre>{}</pre>", html_escape::encode_text(result))
+fn render_bird_result(context: &BirdContext, option: &str) -> anyhow::Result<TrustedHtml> {
+    if option == "summary" && context.result.starts_with("Name") {
+        if let Ok(summary_context) = summary_parser::parse_summary(
+            &context.result,
+            context.server_name.clone(),
+        ) {
+            let summary = templates::render_summary(&summary_context)?;
+            return templates::render_bird_with_html(context, &summary);
         }
     }
-} 
+
+    templates::render_bird(context)
+}
+
+fn render_traceroute_error(server_name: &str, target: &str, error: &str) -> anyhow::Result<TrustedHtml> {
+    render_query_error(format!("{}: traceroute {}", server_name, target), error)
+}
+
+fn render_whois_error(target: &str, error: &str) -> anyhow::Result<TrustedHtml> {
+    render_query_error(format!("whois {}", target), error)
+}
+
+fn render_bird_error(server_name: &str, command: &str, error: &str) -> anyhow::Result<TrustedHtml> {
+    render_query_error(format!("{}: {}", server_name, command), error)
+}
+
+fn render_query_error(heading: String, error: &str) -> anyhow::Result<TrustedHtml> {
+    templates::render_query_error(&QueryErrorContext {
+        heading,
+        error: error.to_string(),
+    })
+}
+
+fn template_error_response(error: anyhow::Error) -> Response {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        format!("Template error: {}", error),
+    ).into_response()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn query_failure_templates_escape_untrusted_values() {
+        templates::init().unwrap();
+        let payload = r#"><script>alert("xss")</script><img src=x onerror=alert(1)>"#;
+
+        let rendered = [
+            render_traceroute_error(payload, payload, payload).unwrap(),
+            render_whois_error(payload, payload).unwrap(),
+            render_bird_error(payload, payload, payload).unwrap(),
+        ];
+
+        for fragment in rendered {
+            assert!(!fragment.as_str().contains("<script>"));
+            assert!(!fragment.as_str().contains("<img"));
+            assert!(fragment.as_str().contains("&lt;script&gt;"));
+            assert!(fragment.as_str().contains("&lt;img"));
+        }
+    }
+}

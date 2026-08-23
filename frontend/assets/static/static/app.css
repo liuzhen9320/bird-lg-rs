@@ -1,0 +1,13 @@
+.navbar-nav {
+	flex-wrap: wrap;
+}
+
+@media (min-width: 768px) {
+	.navbar form {
+		min-width: 400px;
+	}
+
+	.nav-link {
+		padding: 0.2rem 0.5rem !important;
+	}
+}

@@ -8,19 +8,7 @@
 <meta name="renderer" content="webkit">
 <title>{{ title }}</title>
 <link rel="stylesheet" href="/static/jsdelivr/npm/bootstrap@4.5.1/dist/css/bootstrap.min.css" crossorigin="anonymous">
-<style>
-.navbar-nav {
-	flex-wrap: wrap;
-}
-@media (min-width: 768px) {
-	.navbar form {
-		min-width: 400px;
-	}
-	.nav-link {
-		padding: 0.2rem 0.5rem !important;
-	}
-}
-</style>
+<link rel="stylesheet" href="/static/app.css">
 <meta name="robots" content="noindex, nofollow">
 </head>
 <body>
@@ -44,7 +32,7 @@
 			</li>
 			{% endfor %}
 		</ul>
-		<form name="goto" class="form-inline" action="javascript:goto();">
+		<form name="goto" id="goto-form" class="form-inline" action="/">
 			<div class="input-group">
 				<select name="action" class="form-control">
 					{% for option in options %}
@@ -62,38 +50,12 @@
 </nav>
 
 <div class="container">
-	{{ content | safe }}
+	{{ trusted_content | safe }}
 </div>
 
 <script src="/static/jsdelivr/npm/jquery@3.5.1/dist/jquery.min.js" crossorigin="anonymous"></script>
 <script src="/static/jsdelivr/npm/bootstrap@4.5.1/dist/js/bootstrap.min.js" crossorigin="anonymous"></script>
 <script src="/static/sortTable.js"></script>
-
-<script>
-function goto() {
-	let action = $('[name="action"]').val();
-	let server = $('[name="server"]').val();
-	let target = $('[name="target"]').val();
-	let url = "";
-	const allowedActions = new Set(["whois", "summary", "ping", "dns"]);
-
-	if (!allowedActions.has(action)) {
-		return;
-	}
-
-	const encodedServer = encodeURIComponent(server || "");
-	const encodedTarget = encodeURIComponent(target || "");
-
-	if (action == "whois") {
-		url = "/" + action + "/" + encodedTarget;
-	} else if (action == "summary") {
-		url = "/" + action + "/" + encodedServer + "/";
-	} else {
-		url = "/" + action + "/" + encodedServer + "/" + encodedTarget;
-	}
-
-	window.location.href = url;
-}
-</script>
+<script src="/static/goto.js"></script>
 </body>
 </html>
