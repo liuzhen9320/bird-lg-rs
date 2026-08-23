@@ -43,7 +43,9 @@ impl Settings {
 
         info!("Settings initialized");
 
-        SETTINGS.set(settings).map_err(|_| anyhow::anyhow!("Settings already initialized"))?;
+        SETTINGS
+            .set(settings)
+            .map_err(|_| anyhow::anyhow!("Settings already initialized"))?;
         Ok(())
     }
 
@@ -62,7 +64,10 @@ impl Settings {
         let mut servers = Vec::new();
         let mut servers_display = Vec::new();
 
-        info!("Initializing settings with args.servers: {:?}", args.servers);
+        info!(
+            "Initializing settings with args.servers: {:?}",
+            args.servers
+        );
         info!("Domain: '{}'", args.domain);
 
         for server_spec in &args.servers {
@@ -71,7 +76,10 @@ impl Settings {
                 // Display name format: "Display<actual>"
                 let display_name = server_spec[..angle_pos].to_string();
                 let actual = server_spec[angle_pos + 1..server_spec.len() - 1].to_string();
-                info!("Found <> format: display_name='{}', actual='{}'", display_name, actual);
+                info!(
+                    "Found <> format: display_name='{}', actual='{}'",
+                    display_name, actual
+                );
                 servers_display.push(display_name);
                 servers.push(actual);
             } else {
@@ -83,7 +91,10 @@ impl Settings {
         }
 
         info!("Before domain processing - servers: {:?}", servers);
-        info!("Before domain processing - servers_display: {:?}", servers_display);
+        info!(
+            "Before domain processing - servers_display: {:?}",
+            servers_display
+        );
 
         // Build full server names with domain (only modify servers, not servers_display)
         if !args.domain.is_empty() {
@@ -91,21 +102,35 @@ impl Settings {
                 let original = servers[i].clone();
                 if !servers[i].contains('.') && !servers[i].parse::<std::net::IpAddr>().is_ok() {
                     servers[i] = format!("{}.{}", servers[i], args.domain);
-                    info!("Added domain to servers[{}]: '{}' -> '{}'", i, original, servers[i]);
+                    info!(
+                        "Added domain to servers[{}]: '{}' -> '{}'",
+                        i, original, servers[i]
+                    );
                 } else {
-                    info!("Skipped domain for servers[{}]: '{}' (already has domain or is IP)", i, original);
+                    info!(
+                        "Skipped domain for servers[{}]: '{}' (already has domain or is IP)",
+                        i, original
+                    );
                     // If the server name already contains the domain, remove it from display name
                     if servers[i].ends_with(&format!(".{}", args.domain)) {
-                        let without_domain = servers[i].strip_suffix(&format!(".{}", args.domain)).unwrap_or(&servers[i]);
+                        let without_domain = servers[i]
+                            .strip_suffix(&format!(".{}", args.domain))
+                            .unwrap_or(&servers[i]);
                         servers_display[i] = without_domain.to_string();
-                        info!("Removed domain from servers_display[{}]: '{}' -> '{}'", i, original, servers_display[i]);
+                        info!(
+                            "Removed domain from servers_display[{}]: '{}' -> '{}'",
+                            i, original, servers_display[i]
+                        );
                     }
                 }
             }
         }
 
         info!("After domain processing - servers: {:?}", servers);
-        info!("After domain processing - servers_display: {:?}", servers_display);
+        info!(
+            "After domain processing - servers_display: {:?}",
+            servers_display
+        );
 
         Ok(Settings {
             servers,
@@ -180,4 +205,4 @@ impl Settings {
             })
             .collect()
     }
-} 
+}

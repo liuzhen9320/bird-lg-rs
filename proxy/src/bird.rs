@@ -1,5 +1,5 @@
-use anyhow::{anyhow, bail, Result};
 use crate::settings::Settings;
+use anyhow::{anyhow, bail, Result};
 use std::time::Duration;
 use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
 use tokio::time::timeout;
@@ -150,7 +150,12 @@ async fn execute_bird_command_with_limits(
         execute_bird_exchange(socket_path, query, max_response_bytes),
     )
     .await
-    .map_err(|_| anyhow!("BIRD command timed out after {} seconds", execution_timeout.as_secs()))?
+    .map_err(|_| {
+        anyhow!(
+            "BIRD command timed out after {} seconds",
+            execution_timeout.as_secs()
+        )
+    })?
 }
 
 /// Execute a BIRD command and return the output
@@ -161,7 +166,8 @@ pub async fn execute_bird_command(query: &str) -> Result<String> {
         query,
         Duration::from_secs(settings.bird_timeout),
         settings.bird_max_response_bytes,
-    ).await
+    )
+    .await
 }
 
 #[cfg(all(test, unix))]
@@ -198,12 +204,20 @@ mod tests {
     async fn serve_bird_response(listener: UnixListener, response: Vec<u8>) {
         let (stream, _) = listener.accept().await.unwrap();
         let mut reader = BufReader::new(stream);
-        reader.get_mut().write_all(b"0001 BIRD ready\n").await.unwrap();
+        reader
+            .get_mut()
+            .write_all(b"0001 BIRD ready\n")
+            .await
+            .unwrap();
 
         let mut command = String::new();
         reader.read_line(&mut command).await.unwrap();
         assert_eq!(command, "restrict\n");
-        reader.get_mut().write_all(b"0001 Access restricted\n").await.unwrap();
+        reader
+            .get_mut()
+            .write_all(b"0001 Access restricted\n")
+            .await
+            .unwrap();
 
         command.clear();
         reader.read_line(&mut command).await.unwrap();
@@ -225,7 +239,9 @@ mod tests {
             "show route",
             Duration::from_secs(1),
             64,
-        ).await.unwrap();
+        )
+        .await
+        .unwrap();
 
         assert_eq!(output, "route result\n");
         server.await.unwrap();
@@ -243,7 +259,9 @@ mod tests {
             "show route",
             Duration::from_secs(1),
             64,
-        ).await.unwrap_err();
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(error.to_string(), "BIRD response exceeded 64 bytes");
         server.await.unwrap();
@@ -263,7 +281,9 @@ mod tests {
             "show route",
             Duration::from_millis(20),
             64,
-        ).await.unwrap_err();
+        )
+        .await
+        .unwrap_err();
 
         assert_eq!(error.to_string(), "BIRD command timed out after 0 seconds");
         server.abort();

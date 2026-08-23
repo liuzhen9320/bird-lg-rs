@@ -52,7 +52,11 @@ struct Args {
     bird_timeout: u64,
 
     /// Maximum BIRD response size, in bytes
-    #[arg(long, env = "BIRDLG_BIRD_MAX_RESPONSE_BYTES", default_value_t = 1_048_576)]
+    #[arg(
+        long,
+        env = "BIRDLG_BIRD_MAX_RESPONSE_BYTES",
+        default_value_t = 1_048_576
+    )]
     bird_max_response_bytes: usize,
 
     /// Listen address (TCP port or Unix socket path)
@@ -80,7 +84,11 @@ struct Args {
     traceroute_timeout: u64,
 
     /// Maximum combined traceroute output size, in bytes
-    #[arg(long, env = "BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES", default_value_t = 1_048_576)]
+    #[arg(
+        long,
+        env = "BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES",
+        default_value_t = 1_048_576
+    )]
     traceroute_max_output_bytes: usize,
 
     /// Restrict Bird queries to show protocols and show route commands
@@ -291,19 +299,32 @@ mod tests {
     use std::{env, ffi::OsString};
 
     const CONFIG_ENV_VARS: &[&str] = &[
-        "ALLOWED_IPS", "BIRD_SOCKET", "BIRDLG_BIRD_TIMEOUT", "BIRDLG_BIRD_MAX_RESPONSE_BYTES",
-        "BIRDLG_PROXY_PORT", "BIRDLG_TRACEROUTE_BIN",
-        "BIRDLG_TRACEROUTE_FLAGS", "BIRDLG_TRACEROUTE_RAW",
-        "BIRDLG_TRACEROUTE_MAX_CONCURRENT", "BIRDLG_TRACEROUTE_TIMEOUT",
-        "BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES", "BIRDLG_BIRD_RESTRICT_CMDS",
-        "BIRDLG_AUTH_ENABLED", "BIRDLG_AUTH_TOKEN",
+        "ALLOWED_IPS",
+        "BIRD_SOCKET",
+        "BIRDLG_BIRD_TIMEOUT",
+        "BIRDLG_BIRD_MAX_RESPONSE_BYTES",
+        "BIRDLG_PROXY_PORT",
+        "BIRDLG_TRACEROUTE_BIN",
+        "BIRDLG_TRACEROUTE_FLAGS",
+        "BIRDLG_TRACEROUTE_RAW",
+        "BIRDLG_TRACEROUTE_MAX_CONCURRENT",
+        "BIRDLG_TRACEROUTE_TIMEOUT",
+        "BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES",
+        "BIRDLG_BIRD_RESTRICT_CMDS",
+        "BIRDLG_AUTH_ENABLED",
+        "BIRDLG_AUTH_TOKEN",
     ];
 
     struct EnvGuard(Vec<(&'static str, Option<OsString>)>);
 
     impl EnvGuard {
         fn new() -> Self {
-            Self(CONFIG_ENV_VARS.iter().map(|key| (*key, env::var_os(key))).collect())
+            Self(
+                CONFIG_ENV_VARS
+                    .iter()
+                    .map(|key| (*key, env::var_os(key)))
+                    .collect(),
+            )
         }
     }
 
@@ -342,7 +363,10 @@ mod tests {
         }
 
         let args = Args::try_parse_from(["bird-lgproxy-rs"]).unwrap();
-        assert_eq!(args.allowed.as_ref().unwrap(), &["192.0.2.1", "2001:db8::/32"]);
+        assert_eq!(
+            args.allowed.as_ref().unwrap(),
+            &["192.0.2.1", "2001:db8::/32"]
+        );
         assert_eq!(args.bird, "/run/bird/example.ctl");
         assert_eq!(args.bird_timeout, 7);
         assert_eq!(args.bird_max_response_bytes, 65_536);
@@ -357,11 +381,13 @@ mod tests {
         assert!(args.auth_enabled);
         assert_eq!(args.auth_token.as_deref(), Some("environment-token"));
 
-        let settings = Settings::from_args(
-            Args::try_parse_from(["bird-lgproxy-rs"]).unwrap()
-        ).unwrap();
-        let allowed_nets: Vec<String> = settings.allowed_nets.iter()
-            .map(ToString::to_string).collect();
+        let settings =
+            Settings::from_args(Args::try_parse_from(["bird-lgproxy-rs"]).unwrap()).unwrap();
+        let allowed_nets: Vec<String> = settings
+            .allowed_nets
+            .iter()
+            .map(ToString::to_string)
+            .collect();
         assert_eq!(allowed_nets, ["192.0.2.1/32", "2001:db8::/32"]);
         assert_eq!(settings.traceroute_flags, ["-m", "12", "--wait=2"]);
         assert_eq!(settings.bird_timeout, 7);
@@ -371,9 +397,13 @@ mod tests {
 
         env::set_var("BIRDLG_AUTH_ENABLED", "false");
         let cli_args = Args::try_parse_from([
-            "bird-lgproxy-rs", "--allowed=198.51.100.0/24", "--listen=9100",
-            "--bird-restrict-cmds", "--auth-enabled",
-        ]).unwrap();
+            "bird-lgproxy-rs",
+            "--allowed=198.51.100.0/24",
+            "--listen=9100",
+            "--bird-restrict-cmds",
+            "--auth-enabled",
+        ])
+        .unwrap();
         assert_eq!(cli_args.allowed.unwrap(), ["198.51.100.0/24"]);
         assert_eq!(cli_args.listen, "9100");
         assert!(cli_args.bird_restrict_cmds);
@@ -382,13 +412,17 @@ mod tests {
         let mut invalid = Args::try_parse_from(["bird-lgproxy-rs"]).unwrap();
         invalid.auth_enabled = true;
         invalid.auth_token = Some(" ".to_string());
-        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
-            "Authentication token is required when authentication is enabled");
+        assert_eq!(
+            Settings::from_args(invalid).unwrap_err().to_string(),
+            "Authentication token is required when authentication is enabled"
+        );
 
         let mut invalid = Args::try_parse_from(["bird-lgproxy-rs"]).unwrap();
         invalid.traceroute_max_concurrent = 0;
-        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
-            "Traceroute maximum concurrency must be greater than zero");
+        assert_eq!(
+            Settings::from_args(invalid).unwrap_err().to_string(),
+            "Traceroute maximum concurrency must be greater than zero"
+        );
     }
 
     #[test]

@@ -1,6 +1,6 @@
+use base64::{engine::general_purpose, Engine as _};
 use regex::Regex;
 use std::collections::HashMap;
-use base64::{Engine as _, engine::general_purpose};
 
 #[derive(Debug, Clone)]
 pub struct RouteAttrs {
@@ -88,30 +88,38 @@ impl RouteGraph {
     }
 
     pub fn add_point(&mut self, name: String, perform_lookup: bool, attrs: RouteAttrs) {
-        let mut point = self.points.get(&name).cloned().unwrap_or_else(RoutePoint::new);
+        let mut point = self
+            .points
+            .get(&name)
+            .cloned()
+            .unwrap_or_else(RoutePoint::new);
         point.perform_lookup = perform_lookup;
-        
+
         // Merge attributes
         for (k, v) in attrs.iter() {
             point.attrs.insert(k.clone(), v.clone());
         }
-        
+
         self.points.insert(name, point);
     }
 
     pub fn add_edge(&mut self, src: String, dest: String, label: String, attrs: RouteAttrs) {
         let key = RouteEdgeKey { src, dest };
-        let mut edge = self.edges.get(&key).cloned().unwrap_or_else(RouteEdgeValue::new);
-        
+        let mut edge = self
+            .edges
+            .get(&key)
+            .cloned()
+            .unwrap_or_else(RouteEdgeValue::new);
+
         if !label.is_empty() {
             edge.label.push(label);
         }
-        
+
         // Merge attributes
         for (k, v) in attrs.iter() {
             edge.attrs.insert(k.clone(), v.clone());
         }
-        
+
         self.edges.insert(key, edge);
     }
 
@@ -163,17 +171,13 @@ impl RouteGraph {
             attrs_copy.insert("label".to_string(), representation);
 
             let attrs_str = self.attrs_to_string(&attrs_copy);
-            let attrs_part = if attrs_str.is_empty() { 
-                String::new() 
-            } else { 
-                format!(" {}", attrs_str) 
+            let attrs_part = if attrs_str.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", attrs_str)
             };
 
-            result.push_str(&format!(
-                "  {}{};\n",
-                self.escape(name),
-                attrs_part
-            ));
+            result.push_str(&format!("  {}{};\n", self.escape(name), attrs_part));
         }
 
         // Add edges
@@ -182,14 +186,14 @@ impl RouteGraph {
             if !edge.label.is_empty() {
                 attrs_copy.insert("label".to_string(), edge.label.join("\\n"));
             }
-            
+
             let attrs_str = self.attrs_to_string(&attrs_copy);
-            let attrs_part = if attrs_str.is_empty() { 
-                String::new() 
-            } else { 
-                format!(" {}", attrs_str) 
+            let attrs_part = if attrs_str.is_empty() {
+                String::new()
+            } else {
+                format!(" {}", attrs_str)
             };
-            
+
             result.push_str(&format!(
                 "  {} -> {}{};\n",
                 self.escape(&key.src),
@@ -262,7 +266,7 @@ fn make_point_attrs(preferred: bool) -> RouteAttrs {
 
 fn bird_route_to_graph(servers: &[String], responses: &[String], target: &str) -> RouteGraph {
     let mut graph = RouteGraph::new();
-    
+
     // Add target point
     let mut target_attrs = RouteAttrs::new();
     target_attrs.insert("color".to_string(), "red".to_string());
@@ -271,9 +275,11 @@ fn bird_route_to_graph(servers: &[String], responses: &[String], target: &str) -
 
     // Compile regex patterns
     let protocol_name_re = Regex::new(r"\[(.*?) .*\]").expect("Invalid regex pattern");
-    let route_split_re = Regex::new(r"(unicast|blackhole|unreachable|prohibited)").expect("Invalid regex pattern");
+    let route_split_re =
+        Regex::new(r"(unicast|blackhole|unreachable|prohibited)").expect("Invalid regex pattern");
     let route_via_re = Regex::new(r"(?m)^\t(via .*?)$").expect("Invalid regex pattern");
-    let route_as_path_re = Regex::new(r"(?mi)^\tBGP(?:\.as)?_path: (.*?)$").expect("Invalid regex pattern");
+    let route_as_path_re =
+        Regex::new(r"(?mi)^\tBGP(?:\.as)?_path: (.*?)$").expect("Invalid regex pattern");
 
     for (server_id, server) in servers.iter().enumerate() {
         if let Some(response) = responses.get(server_id) {
@@ -314,7 +320,9 @@ fn bird_route_to_graph(servers: &[String], responses: &[String], target: &str) -
                         if !path_string.is_empty() {
                             paths = path_string
                                 .split_whitespace()
-                                .map(|p| p.trim_start_matches('(').trim_end_matches(')').to_string())
+                                .map(|p| {
+                                    p.trim_start_matches('(').trim_end_matches(')').to_string()
+                                })
                                 .collect();
                         }
                     }
@@ -345,7 +353,10 @@ fn bird_route_to_graph(servers: &[String], responses: &[String], target: &str) -
                 // Process AS path
                 for (i, path_asn) in paths.iter().enumerate() {
                     let (src, label) = if i == 0 {
-                        (server.clone(), format!("{}\n{}", protocol_name, via).trim().to_string())
+                        (
+                            server.clone(),
+                            format!("{}\n{}", protocol_name, via).trim().to_string(),
+                        )
                     } else {
                         (paths[i - 1].clone(), String::new())
                     };
@@ -393,25 +404,25 @@ pub fn debug_graphviz_generation() {
 	BGP.origin: IGP
 	BGP.as_path: 4242422688 4242423914
 	BGP.next_hop: 172.23.6.6"#.to_string()];
-    
+
     println!("=== BGP MAP DEBUG ===");
     println!("Input servers: {:?}", servers);
     println!("Input responses length: {}", responses[0].len());
-    
+
     // Generate the DOT graph (matches handlers.rs logic)
     let dot_graph = bird_route_to_graphviz(&servers, &responses, "172.20.0.53");
-    
+
     println!("\n=== Generated DOT Graph ===");
     println!("{}", dot_graph);
     println!("DOT length: {} characters", dot_graph.len());
-    
+
     // Generate base64 (matches handlers.rs logic)
     let base64_result = general_purpose::STANDARD.encode(&dot_graph);
-    
+
     println!("\n=== Base64 Output ===");
     println!("Base64 length: {} characters", base64_result.len());
     println!("Base64 result: {}", base64_result);
-    
+
     // Verify round-trip
     println!("\n=== Round-trip Verification ===");
     if let Ok(decoded_bytes) = general_purpose::STANDARD.decode(&base64_result) {
@@ -419,7 +430,7 @@ pub fn debug_graphviz_generation() {
             println!("✅ Successfully decoded base64");
             println!("Decoded length: {} characters", decoded_string.len());
             println!("Matches original: {}", decoded_string == dot_graph);
-            
+
             if decoded_string != dot_graph {
                 println!("❌ MISMATCH DETECTED!");
                 println!("Original:\n{}", dot_graph);
@@ -431,17 +442,28 @@ pub fn debug_graphviz_generation() {
     } else {
         println!("❌ Failed to decode base64");
     }
-    
+
     // Check for common issues
     println!("\n=== Validation Checks ===");
     let checks = vec![
-        ("Starts with 'digraph {'", dot_graph.starts_with("digraph {")),
+        (
+            "Starts with 'digraph {'",
+            dot_graph.starts_with("digraph {"),
+        ),
         ("Ends with '}\n'", dot_graph.ends_with("}\n")),
         ("Contains rankdir", dot_graph.contains("rankdir=LR")),
-        ("Contains node directive", dot_graph.contains("node [shape=box]")),
-        ("All lines end properly", dot_graph.lines().all(|line| !line.contains("->") || line.trim().ends_with(';'))),
+        (
+            "Contains node directive",
+            dot_graph.contains("node [shape=box]"),
+        ),
+        (
+            "All lines end properly",
+            dot_graph
+                .lines()
+                .all(|line| !line.contains("->") || line.trim().ends_with(';')),
+        ),
     ];
-    
+
     for (check_name, passed) in checks {
         println!("{} {}", if passed { "✅" } else { "❌" }, check_name);
     }
@@ -461,8 +483,17 @@ mod tests {
         );
 
         // Decode the base64 result to check for XSS
-        let decoded = String::from_utf8(general_purpose::STANDARD.decode(result).expect("Failed to decode base64")).expect("Failed to convert to string");
-        assert!(!decoded.contains(fake_result), "XSS injection succeeded: {}", decoded);
+        let decoded = String::from_utf8(
+            general_purpose::STANDARD
+                .decode(result)
+                .expect("Failed to decode base64"),
+        )
+        .expect("Failed to convert to string");
+        assert!(
+            !decoded.contains(fake_result),
+            "XSS injection succeeded: {}",
+            decoded
+        );
     }
 
     #[test]
@@ -493,19 +524,40 @@ mod tests {
         let result = bird_route_to_graph(&[String::from("node")], &[input.to_string()], "target");
 
         // Source node must exist
-        assert!(result.get_point("node").is_some(), "Result doesn't contain point node");
-        
+        assert!(
+            result.get_point("node").is_some(),
+            "Result doesn't contain point node"
+        );
+
         // Last hop must exist
-        assert!(result.get_point("4242423914").is_some(), "Result doesn't contain point 4242423914");
-        
+        assert!(
+            result.get_point("4242423914").is_some(),
+            "Result doesn't contain point 4242423914"
+        );
+
         // Destination must exist
-        assert!(result.get_point("target").is_some(), "Result doesn't contain point target");
+        assert!(
+            result.get_point("target").is_some(),
+            "Result doesn't contain point target"
+        );
 
         // Verify that a few paths exist
-        assert!(result.get_edge("node", "4242423914").is_some(), "Result doesn't contain edge from node to 4242423914");
-        assert!(result.get_edge("node", "4242422688").is_some(), "Result doesn't contain edge from node to 4242422688");
-        assert!(result.get_edge("4242422688", "4242423914").is_some(), "Result doesn't contain edge from 4242422688 to 4242423914");
-        assert!(result.get_edge("4242423914", "target").is_some(), "Result doesn't contain edge from 4242423914 to target");
+        assert!(
+            result.get_edge("node", "4242423914").is_some(),
+            "Result doesn't contain edge from node to 4242423914"
+        );
+        assert!(
+            result.get_edge("node", "4242422688").is_some(),
+            "Result doesn't contain edge from node to 4242422688"
+        );
+        assert!(
+            result.get_edge("4242422688", "4242423914").is_some(),
+            "Result doesn't contain edge from 4242422688 to 4242423914"
+        );
+        assert!(
+            result.get_edge("4242423914", "target").is_some(),
+            "Result doesn't contain edge from 4242423914 to target"
+        );
     }
 
     #[test]
@@ -518,13 +570,25 @@ mod tests {
 	BGP.as_path: 4242423914
 	BGP.next_hop: 172.20.229.122"#;
 
-        let dot_result = bird_route_to_graphviz(&[String::from("node")], &[input.to_string()], "target");
+        let dot_result =
+            bird_route_to_graphviz(&[String::from("node")], &[input.to_string()], "target");
         let base64_result = general_purpose::STANDARD.encode(&dot_result);
-        
+
         // Decode the base64 result
-        let decoded = String::from_utf8(general_purpose::STANDARD.decode(base64_result).expect("Failed to decode base64")).expect("Failed to convert to string");
-        assert!(decoded.contains("digraph {"), "Response is not Graphviz data");
-        assert_eq!(decoded, dot_result, "Round-trip encoding/decoding should match");
+        let decoded = String::from_utf8(
+            general_purpose::STANDARD
+                .decode(base64_result)
+                .expect("Failed to decode base64"),
+        )
+        .expect("Failed to convert to string");
+        assert!(
+            decoded.contains("digraph {"),
+            "Response is not Graphviz data"
+        );
+        assert_eq!(
+            decoded, dot_result,
+            "Round-trip encoding/decoding should match"
+        );
     }
 
     #[test]
@@ -537,31 +601,54 @@ mod tests {
 	BGP.as_path: 4242423914
 	BGP.next_hop: 172.20.229.122"#;
 
-        let dot_result = bird_route_to_graphviz(&[String::from("node")], &[input.to_string()], "target");
+        let dot_result =
+            bird_route_to_graphviz(&[String::from("node")], &[input.to_string()], "target");
         let base64_result = general_purpose::STANDARD.encode(&dot_result);
-        
+
         // Decode the base64 result
-        let decoded = String::from_utf8(general_purpose::STANDARD.decode(base64_result).expect("Failed to decode base64")).expect("Failed to convert to string");
+        let decoded = String::from_utf8(
+            general_purpose::STANDARD
+                .decode(base64_result)
+                .expect("Failed to decode base64"),
+        )
+        .expect("Failed to convert to string");
         println!("Generated DOT:\n{}", decoded);
-        
+
         // Check that it starts and ends properly
-        assert!(decoded.starts_with("digraph {"), "DOT should start with 'digraph {{'");
+        assert!(
+            decoded.starts_with("digraph {"),
+            "DOT should start with 'digraph {{'"
+        );
         assert!(decoded.ends_with("}\n"), "DOT should end with '}}'");
-        
+
         // Check that it contains required elements
-        assert!(decoded.contains("rankdir=LR"), "Should contain rankdir directive");
-        assert!(decoded.contains("node [shape=box]"), "Should contain node shape directive");
+        assert!(
+            decoded.contains("rankdir=LR"),
+            "Should contain rankdir directive"
+        );
+        assert!(
+            decoded.contains("node [shape=box]"),
+            "Should contain node shape directive"
+        );
         assert!(decoded.contains("target"), "Should contain target node");
         assert!(decoded.contains("node"), "Should contain server node");
-        
+
         // Check that edges are properly formatted (should contain -> and end with ;)
         let lines: Vec<&str> = decoded.lines().collect();
         for line in &lines {
             if line.contains("->") {
-                assert!(line.trim().ends_with(';'), "Edge line should end with semicolon: {}", line);
+                assert!(
+                    line.trim().ends_with(';'),
+                    "Edge line should end with semicolon: {}",
+                    line
+                );
             }
             if line.contains('[') && !line.contains("node [") {
-                assert!(line.trim().ends_with(';'), "Attribute line should end with semicolon: {}", line);
+                assert!(
+                    line.trim().ends_with(';'),
+                    "Attribute line should end with semicolon: {}",
+                    line
+                );
             }
         }
     }
@@ -571,4 +658,4 @@ mod tests {
         println!("\n🔍 Running BGP MAP debug output...\n");
         debug_graphviz_generation();
     }
-} 
+}

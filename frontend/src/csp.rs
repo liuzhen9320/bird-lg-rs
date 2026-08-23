@@ -1,8 +1,8 @@
 use axum::{
+    extract::Request,
     http::{header, HeaderValue},
     middleware::Next,
     response::Response,
-    extract::Request,
 };
 
 const CSP_HEADER_VALUE: &str = "default-src 'self'; \
@@ -13,10 +13,7 @@ const CSP_HEADER_VALUE: &str = "default-src 'self'; \
     base-uri 'self'; \
     form-action 'self'";
 
-pub async fn csp_middleware(
-    request: Request,
-    next: Next,
-) -> Response {
+pub async fn csp_middleware(request: Request, next: Next) -> Response {
     let mut response = next.run(request).await;
     response.headers_mut().insert(
         header::CONTENT_SECURITY_POLICY,

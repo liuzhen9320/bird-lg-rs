@@ -1,8 +1,8 @@
-use anyhow::{Result, anyhow};
+use anyhow::{anyhow, Result};
+use rust_embed::RustEmbed;
 use serde::Serialize;
 use std::sync::OnceLock;
 use tera::{Context, Tera};
-use rust_embed::RustEmbed;
 
 #[derive(RustEmbed)]
 #[folder = "assets/templates"]
@@ -83,17 +83,20 @@ pub struct SummaryRowData {
 
 pub fn init() -> Result<()> {
     let mut tera = Tera::default();
-    
+
     // Load embedded templates
     for file in Templates::iter() {
-        let content = Templates::get(&file).ok_or_else(|| anyhow!("Template {} not found", file))?;
+        let content =
+            Templates::get(&file).ok_or_else(|| anyhow!("Template {} not found", file))?;
         let content_str = std::str::from_utf8(content.data.as_ref())?;
         tera.add_raw_template(&file, content_str)?;
     }
-    
+
     tera.autoescape_on(vec!["html"]);
-    
-    TEMPLATES.set(tera).map_err(|_| anyhow::anyhow!("Templates already initialized"))?;
+
+    TEMPLATES
+        .set(tera)
+        .map_err(|_| anyhow::anyhow!("Templates already initialized"))?;
     Ok(())
 }
 

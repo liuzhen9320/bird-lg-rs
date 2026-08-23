@@ -3,7 +3,7 @@ use anyhow::Result;
 use ipnet::IpNet;
 use std::net::IpAddr;
 use std::sync::OnceLock;
-use tracing::{info, debug};
+use tracing::{debug, info};
 
 #[derive(Debug, Clone)]
 pub struct Settings {
@@ -31,7 +31,9 @@ impl Settings {
 
         info!("Settings initialized");
 
-        SETTINGS.set(settings).map_err(|_| anyhow::anyhow!("Settings already initialized"))?;
+        SETTINGS
+            .set(settings)
+            .map_err(|_| anyhow::anyhow!("Settings already initialized"))?;
         Ok(())
     }
 
@@ -125,4 +127,4 @@ impl Settings {
 
         false
     }
-} 
+}

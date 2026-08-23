@@ -1,27 +1,30 @@
-use anyhow::{anyhow, Result};
-use reqwest::{Client, header::{HeaderMap, AUTHORIZATION}};
-use std::time::Duration;
 use crate::settings::Settings;
+use anyhow::{anyhow, Result};
+use reqwest::{
+    header::{HeaderMap, AUTHORIZATION},
+    Client,
+};
+use std::time::Duration;
 
 /// Validate that all requested servers are in the configured server list
 pub fn validate_servers(servers: &[String]) -> Result<()> {
     let settings = Settings::global();
-    
+
     for server in servers {
         if !settings.servers.contains(server) {
             return Err(anyhow!("request failed: invalid server"));
         }
     }
-    
+
     Ok(())
 }
 
 pub async fn bird_query(server: &str, command: &str) -> Result<String> {
     let settings = Settings::global();
     let client = Client::new();
-    
+
     let url = format!("http://{}:{}/bird", server, settings.proxy_port);
-    
+
     let mut request = client
         .get(&url)
         .query(&[("q", command)])
@@ -31,14 +34,16 @@ pub async fn bird_query(server: &str, command: &str) -> Result<String> {
     if settings.auth_enabled {
         if let Some(token) = &settings.auth_token {
             let mut headers = HeaderMap::new();
-            let header_value = format!("Bearer {}", token).parse().map_err(|e| anyhow!("Invalid auth token: {}", e))?;
+            let header_value = format!("Bearer {}", token)
+                .parse()
+                .map_err(|e| anyhow!("Invalid auth token: {}", e))?;
             headers.insert(AUTHORIZATION, header_value);
             request = request.headers(headers);
         }
     }
-    
+
     let response = request.send().await?;
-    
+
     if response.status().is_success() {
         Ok(response.text().await?)
     } else {
@@ -49,9 +54,9 @@ pub async fn bird_query(server: &str, command: &str) -> Result<String> {
 pub async fn traceroute_query(server: &str, target: &str) -> Result<String> {
     let settings = Settings::global();
     let client = Client::new();
-    
+
     let url = format!("http://{}:{}/traceroute", server, settings.proxy_port);
-    
+
     let mut request = client
         .get(&url)
         .query(&[("q", target)])
@@ -61,17 +66,19 @@ pub async fn traceroute_query(server: &str, target: &str) -> Result<String> {
     if settings.auth_enabled {
         if let Some(token) = &settings.auth_token {
             let mut headers = HeaderMap::new();
-            let header_value = format!("Bearer {}", token).parse().map_err(|e| anyhow!("Invalid auth token: {}", e))?;
+            let header_value = format!("Bearer {}", token)
+                .parse()
+                .map_err(|e| anyhow!("Invalid auth token: {}", e))?;
             headers.insert(AUTHORIZATION, header_value);
             request = request.headers(headers);
         }
     }
-    
+
     let response = request.send().await?;
-    
+
     if response.status().is_success() {
         Ok(response.text().await?)
     } else {
         Err(anyhow!("HTTP error: {}", response.status()))
     }
-} 
+}

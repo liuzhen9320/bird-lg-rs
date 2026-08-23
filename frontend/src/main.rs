@@ -1,22 +1,13 @@
-use axum::{
-    middleware,
-    routing::get,
-    Router,
-};
+use axum::{middleware, routing::get, Router};
 use clap::Parser;
 use std::net::SocketAddr;
 use tower::ServiceBuilder;
-use tower_http::{
-    trace::TraceLayer,
-};
+use tower_http::trace::TraceLayer;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 #[cfg(unix)]
-use std::{
-    fs,
-    os::unix::fs::PermissionsExt,
-};
+use std::{fs, os::unix::fs::PermissionsExt};
 
 #[cfg(unix)]
 use tokio::net::UnixListener;
@@ -27,17 +18,17 @@ use tower::Service;
 #[cfg(unix)]
 use hyper::{body::Incoming, Request};
 
-mod settings;
-mod handlers;
-mod templates;
-mod summary_parser;
-mod proxy_client;
-mod bgpmap;
-mod whois;
 mod api;
-mod telegram;
-mod static_files;
+mod bgpmap;
 mod csp;
+mod handlers;
+mod proxy_client;
+mod settings;
+mod static_files;
+mod summary_parser;
+mod telegram;
+mod templates;
+mod whois;
 
 use settings::Settings;
 
@@ -69,7 +60,11 @@ struct Args {
     dns_interface: String,
 
     /// The infos displayed in bgpmap, separated by comma
-    #[arg(long, env = "BIRDLG_BGPMAP_INFO", default_value = "asn,as-name,ASName,descr")]
+    #[arg(
+        long,
+        env = "BIRDLG_BGPMAP_INFO",
+        default_value = "asn,as-name,ASName,descr"
+    )]
     bgpmap_info: String,
 
     /// Prefix of page titles in browser tabs
@@ -126,31 +121,34 @@ struct Args {
 async fn create_unix_listener(socket_path: &str) -> anyhow::Result<()> {
     // Delete existing socket file, ignore errors
     let _ = fs::remove_file(socket_path);
-    
+
     let listener = UnixListener::bind(socket_path)?;
-    
+
     // Set socket permissions to 666 (readable and writable by all)
     if let Err(e) = fs::set_permissions(socket_path, fs::Permissions::from_mode(0o666)) {
         tracing::warn!("Failed to set socket permissions: {}", e);
     }
-    
+
     info!("Server started on Unix socket: {}", socket_path);
-    
+
     let app = build_router().await;
-    
+
     // Manually handle Unix socket connections
     loop {
         match listener.accept().await {
             Ok((stream, _)) => {
                 let app_clone = app.clone();
                 tokio::spawn(async move {
-                    let hyper_service = hyper::service::service_fn(move |request: Request<Incoming>| {
-                        app_clone.clone().call(request)
-                    });
-                    
-                    if let Err(err) = hyper_util::server::conn::auto::Builder::new(hyper_util::rt::TokioExecutor::new())
-                        .serve_connection(hyper_util::rt::TokioIo::new(stream), hyper_service)
-                        .await
+                    let hyper_service =
+                        hyper::service::service_fn(move |request: Request<Incoming>| {
+                            app_clone.clone().call(request)
+                        });
+
+                    if let Err(err) = hyper_util::server::conn::auto::Builder::new(
+                        hyper_util::rt::TokioExecutor::new(),
+                    )
+                    .serve_connection(hyper_util::rt::TokioIo::new(stream), hyper_service)
+                    .await
                     {
                         tracing::warn!("Error serving connection: {:?}", err);
                     }
@@ -168,11 +166,9 @@ async fn build_router() -> Router {
     Router::new()
         // Main page redirects to all servers summary
         .route("/", get(handlers::redirect_to_summary))
-        
         // Summary route without servers - redirect to all servers
         .route("/summary", get(handlers::redirect_to_summary))
         .route("/summary/", get(handlers::redirect_to_summary))
-        
         // Bird protocol queries
         .route("/summary/:servers", get(handlers::bird_summary))
         .route("/summary/:servers/", get(handlers::bird_summary))
@@ -182,66 +178,159 @@ async fn build_router() -> Router {
         .route("/route/:servers/:route/", get(handlers::bird_route))
         .route("/route_all/:servers/:route", get(handlers::bird_route_all))
         .route("/route_all/:servers/:route/", get(handlers::bird_route_all))
-        .route("/route_where/:servers/:prefix", get(handlers::bird_route_where))
-        .route("/route_where/:servers/:prefix/", get(handlers::bird_route_where))
-        .route("/route_where_all/:servers/:prefix", get(handlers::bird_route_where_all))
-        .route("/route_where_all/:servers/:prefix/", get(handlers::bird_route_where_all))
-        .route("/route_bgpmap/:servers/:route", get(handlers::bird_route_bgpmap))
-        .route("/route_bgpmap/:servers/:route/", get(handlers::bird_route_bgpmap))
-        .route("/route_where_bgpmap/:servers/:prefix", get(handlers::bird_route_where_bgpmap))
-        .route("/route_where_bgpmap/:servers/:prefix/", get(handlers::bird_route_where_bgpmap))
-        .route("/route_from_protocol/:servers/:protocol", get(handlers::bird_route_from_protocol))
-        .route("/route_from_protocol/:servers/:protocol/", get(handlers::bird_route_from_protocol))
-        .route("/route_from_protocol_all/:servers/:protocol", get(handlers::bird_route_from_protocol_all))
-        .route("/route_from_protocol_all/:servers/:protocol/", get(handlers::bird_route_from_protocol_all))
-        .route("/route_from_protocol_primary/:servers/:protocol", get(handlers::bird_route_from_protocol_primary))
-        .route("/route_from_protocol_primary/:servers/:protocol/", get(handlers::bird_route_from_protocol_primary))
-        .route("/route_from_protocol_all_primary/:servers/:protocol", get(handlers::bird_route_from_protocol_all_primary))
-        .route("/route_from_protocol_all_primary/:servers/:protocol/", get(handlers::bird_route_from_protocol_all_primary))
-        .route("/route_filtered_from_protocol/:servers/:protocol", get(handlers::bird_route_filtered_from_protocol))
-        .route("/route_filtered_from_protocol/:servers/:protocol/", get(handlers::bird_route_filtered_from_protocol))
-        .route("/route_filtered_from_protocol_all/:servers/:protocol", get(handlers::bird_route_filtered_from_protocol_all))
-        .route("/route_filtered_from_protocol_all/:servers/:protocol/", get(handlers::bird_route_filtered_from_protocol_all))
-        .route("/route_from_origin/:servers/:asn", get(handlers::bird_route_from_origin))
-        .route("/route_from_origin/:servers/:asn/", get(handlers::bird_route_from_origin))
-        .route("/route_from_origin_all/:servers/:asn", get(handlers::bird_route_from_origin_all))
-        .route("/route_from_origin_all/:servers/:asn/", get(handlers::bird_route_from_origin_all))
-        .route("/route_from_origin_primary/:servers/:asn", get(handlers::bird_route_from_origin_primary))
-        .route("/route_from_origin_primary/:servers/:asn/", get(handlers::bird_route_from_origin_primary))
-        .route("/route_from_origin_all_primary/:servers/:asn", get(handlers::bird_route_from_origin_all_primary))
-        .route("/route_from_origin_all_primary/:servers/:asn/", get(handlers::bird_route_from_origin_all_primary))
-        .route("/route_generic/:servers/:command", get(handlers::bird_route_generic))
-        .route("/route_generic/:servers/:command/", get(handlers::bird_route_generic))
+        .route(
+            "/route_where/:servers/:prefix",
+            get(handlers::bird_route_where),
+        )
+        .route(
+            "/route_where/:servers/:prefix/",
+            get(handlers::bird_route_where),
+        )
+        .route(
+            "/route_where_all/:servers/:prefix",
+            get(handlers::bird_route_where_all),
+        )
+        .route(
+            "/route_where_all/:servers/:prefix/",
+            get(handlers::bird_route_where_all),
+        )
+        .route(
+            "/route_bgpmap/:servers/:route",
+            get(handlers::bird_route_bgpmap),
+        )
+        .route(
+            "/route_bgpmap/:servers/:route/",
+            get(handlers::bird_route_bgpmap),
+        )
+        .route(
+            "/route_where_bgpmap/:servers/:prefix",
+            get(handlers::bird_route_where_bgpmap),
+        )
+        .route(
+            "/route_where_bgpmap/:servers/:prefix/",
+            get(handlers::bird_route_where_bgpmap),
+        )
+        .route(
+            "/route_from_protocol/:servers/:protocol",
+            get(handlers::bird_route_from_protocol),
+        )
+        .route(
+            "/route_from_protocol/:servers/:protocol/",
+            get(handlers::bird_route_from_protocol),
+        )
+        .route(
+            "/route_from_protocol_all/:servers/:protocol",
+            get(handlers::bird_route_from_protocol_all),
+        )
+        .route(
+            "/route_from_protocol_all/:servers/:protocol/",
+            get(handlers::bird_route_from_protocol_all),
+        )
+        .route(
+            "/route_from_protocol_primary/:servers/:protocol",
+            get(handlers::bird_route_from_protocol_primary),
+        )
+        .route(
+            "/route_from_protocol_primary/:servers/:protocol/",
+            get(handlers::bird_route_from_protocol_primary),
+        )
+        .route(
+            "/route_from_protocol_all_primary/:servers/:protocol",
+            get(handlers::bird_route_from_protocol_all_primary),
+        )
+        .route(
+            "/route_from_protocol_all_primary/:servers/:protocol/",
+            get(handlers::bird_route_from_protocol_all_primary),
+        )
+        .route(
+            "/route_filtered_from_protocol/:servers/:protocol",
+            get(handlers::bird_route_filtered_from_protocol),
+        )
+        .route(
+            "/route_filtered_from_protocol/:servers/:protocol/",
+            get(handlers::bird_route_filtered_from_protocol),
+        )
+        .route(
+            "/route_filtered_from_protocol_all/:servers/:protocol",
+            get(handlers::bird_route_filtered_from_protocol_all),
+        )
+        .route(
+            "/route_filtered_from_protocol_all/:servers/:protocol/",
+            get(handlers::bird_route_filtered_from_protocol_all),
+        )
+        .route(
+            "/route_from_origin/:servers/:asn",
+            get(handlers::bird_route_from_origin),
+        )
+        .route(
+            "/route_from_origin/:servers/:asn/",
+            get(handlers::bird_route_from_origin),
+        )
+        .route(
+            "/route_from_origin_all/:servers/:asn",
+            get(handlers::bird_route_from_origin_all),
+        )
+        .route(
+            "/route_from_origin_all/:servers/:asn/",
+            get(handlers::bird_route_from_origin_all),
+        )
+        .route(
+            "/route_from_origin_primary/:servers/:asn",
+            get(handlers::bird_route_from_origin_primary),
+        )
+        .route(
+            "/route_from_origin_primary/:servers/:asn/",
+            get(handlers::bird_route_from_origin_primary),
+        )
+        .route(
+            "/route_from_origin_all_primary/:servers/:asn",
+            get(handlers::bird_route_from_origin_all_primary),
+        )
+        .route(
+            "/route_from_origin_all_primary/:servers/:asn/",
+            get(handlers::bird_route_from_origin_all_primary),
+        )
+        .route(
+            "/route_generic/:servers/:command",
+            get(handlers::bird_route_generic),
+        )
+        .route(
+            "/route_generic/:servers/:command/",
+            get(handlers::bird_route_generic),
+        )
         .route("/generic/:servers/:command", get(handlers::bird_generic))
         .route("/generic/:servers/:command/", get(handlers::bird_generic))
-        
         // Traceroute
         .route("/traceroute/:servers/:target", get(handlers::traceroute))
         .route("/traceroute/:servers/:target/", get(handlers::traceroute))
-        
         // Whois
         .route("/whois/:target", get(handlers::whois))
         .route("/whois/:target/", get(handlers::whois))
-        
         // API endpoints
         .route("/api/bird/:servers/:command", get(api::bird_api))
         .route("/api/bird/:servers/:command/", get(api::bird_api))
         .route("/api/traceroute/:servers/:target", get(api::traceroute_api))
-        .route("/api/traceroute/:servers/:target/", get(api::traceroute_api))
+        .route(
+            "/api/traceroute/:servers/:target/",
+            get(api::traceroute_api),
+        )
         .route("/api/whois/:target", get(api::whois_api))
         .route("/api/whois/:target/", get(api::whois_api))
-        
         // Telegram bot webhook (if enabled)
-        .route("/telegram", get(telegram::telegram_webhook).post(telegram::telegram_webhook))
-        .route("/telegram/*servers", get(telegram::telegram_webhook).post(telegram::telegram_webhook))
-        
+        .route(
+            "/telegram",
+            get(telegram::telegram_webhook).post(telegram::telegram_webhook),
+        )
+        .route(
+            "/telegram/*servers",
+            get(telegram::telegram_webhook).post(telegram::telegram_webhook),
+        )
         // Static assets
         .route("/static/*path", get(static_files::serve_static))
-        
         .layer(
             ServiceBuilder::new()
                 .layer(middleware::from_fn(csp::csp_middleware))
-                .layer(TraceLayer::new_for_http())
+                .layer(TraceLayer::new_for_http()),
         )
 }
 
@@ -256,7 +345,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let args = Args::parse();
-    
+
     // Initialize settings
     Settings::init(args).await?;
 
@@ -272,17 +361,17 @@ async fn main() -> anyhow::Result<()> {
         // Unix socket on Unix systems
         return create_unix_listener(&settings.listen).await;
     }
-    
+
     // TCP socket (default for non-Unix systems or TCP addresses on Unix)
     let addr = if settings.listen.contains(':') {
         settings.listen.parse::<SocketAddr>()?
     } else {
         format!("0.0.0.0:{}", settings.listen).parse::<SocketAddr>()?
     };
-    
+
     let listener = tokio::net::TcpListener::bind(addr).await?;
     info!("Server started on TCP: {}", addr);
-    
+
     let app = build_router().await;
     axum::serve(listener, app).await?;
 
@@ -295,19 +384,37 @@ mod tests {
     use std::{env, ffi::OsString};
 
     const CONFIG_ENV_VARS: &[&str] = &[
-        "BIRDLG_SERVERS", "BIRDLG_DOMAIN", "BIRDLG_LISTEN", "BIRDLG_PROXY_PORT",
-        "BIRDLG_WHOIS", "BIRDLG_DNS_INTERFACE", "BIRDLG_BGPMAP_INFO",
-        "BIRDLG_TITLE_BRAND", "BIRDLG_NAVBAR_BRAND", "BIRDLG_NAVBAR_BRAND_URL",
-        "BIRDLG_NAVBAR_ALL_SERVERS", "BIRDLG_NAVBAR_ALL_URL", "BIRDLG_NET_SPECIFIC_MODE",
-        "BIRDLG_PROTOCOL_FILTER", "BIRDLG_NAME_FILTER", "BIRDLG_TIMEOUT",
-        "BIRDLG_TELEGRAM_BOT_NAME", "BIRDLG_AUTH_ENABLED", "BIRDLG_AUTH_TOKEN",
+        "BIRDLG_SERVERS",
+        "BIRDLG_DOMAIN",
+        "BIRDLG_LISTEN",
+        "BIRDLG_PROXY_PORT",
+        "BIRDLG_WHOIS",
+        "BIRDLG_DNS_INTERFACE",
+        "BIRDLG_BGPMAP_INFO",
+        "BIRDLG_TITLE_BRAND",
+        "BIRDLG_NAVBAR_BRAND",
+        "BIRDLG_NAVBAR_BRAND_URL",
+        "BIRDLG_NAVBAR_ALL_SERVERS",
+        "BIRDLG_NAVBAR_ALL_URL",
+        "BIRDLG_NET_SPECIFIC_MODE",
+        "BIRDLG_PROTOCOL_FILTER",
+        "BIRDLG_NAME_FILTER",
+        "BIRDLG_TIMEOUT",
+        "BIRDLG_TELEGRAM_BOT_NAME",
+        "BIRDLG_AUTH_ENABLED",
+        "BIRDLG_AUTH_TOKEN",
     ];
 
     struct EnvGuard(Vec<(&'static str, Option<OsString>)>);
 
     impl EnvGuard {
         fn new() -> Self {
-            Self(CONFIG_ENV_VARS.iter().map(|key| (*key, env::var_os(key))).collect())
+            Self(
+                CONFIG_ENV_VARS
+                    .iter()
+                    .map(|key| (*key, env::var_os(key)))
+                    .collect(),
+            )
         }
     }
 
@@ -376,21 +483,29 @@ mod tests {
 
         env::set_var("BIRDLG_AUTH_ENABLED", "false");
         let cli_args = Args::try_parse_from([
-            "bird-lg-rs", "--servers=cli-a,cli-b", "--proxy-port=9100", "--auth-enabled",
-        ]).unwrap();
+            "bird-lg-rs",
+            "--servers=cli-a,cli-b",
+            "--proxy-port=9100",
+            "--auth-enabled",
+        ])
+        .unwrap();
         assert_eq!(cli_args.servers, ["cli-a", "cli-b"]);
         assert_eq!(cli_args.proxy_port, 9100);
         assert!(cli_args.auth_enabled);
 
         let mut invalid = Args::try_parse_from(["bird-lg-rs"]).unwrap();
         invalid.servers.clear();
-        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
-            "At least one non-empty server must be configured");
+        assert_eq!(
+            Settings::from_args(invalid).unwrap_err().to_string(),
+            "At least one non-empty server must be configured"
+        );
 
         let mut invalid = Args::try_parse_from(["bird-lg-rs"]).unwrap();
         invalid.auth_enabled = true;
         invalid.auth_token = Some(" ".to_string());
-        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
-            "Authentication token is required when authentication is enabled");
+        assert_eq!(
+            Settings::from_args(invalid).unwrap_err().to_string(),
+            "Authentication token is required when authentication is enabled"
+        );
     }
 }

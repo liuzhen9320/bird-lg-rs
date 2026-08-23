@@ -1,5 +1,5 @@
-use anyhow::{anyhow, bail, Result};
 use crate::settings::Settings;
+use anyhow::{anyhow, bail, Result};
 use regex::Regex;
 use std::process::{ExitStatus, Stdio};
 use std::sync::{
@@ -53,9 +53,12 @@ where
             return Ok(output);
         }
 
-        used_bytes.fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
-            used.checked_add(bytes_read).filter(|total| *total <= max_output_bytes)
-        }).map_err(|_| anyhow!("Traceroute output exceeded {} bytes", max_output_bytes))?;
+        used_bytes
+            .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |used| {
+                used.checked_add(bytes_read)
+                    .filter(|total| *total <= max_output_bytes)
+            })
+            .map_err(|_| anyhow!("Traceroute output exceeded {} bytes", max_output_bytes))?;
         output.extend_from_slice(&buffer[..bytes_read]);
     }
 }
@@ -85,8 +88,14 @@ async fn run_command_until(
         .kill_on_drop(true);
 
     let mut child = command.spawn()?;
-    let stdout = child.stdout.take().ok_or_else(|| anyhow!("Failed to capture traceroute stdout"))?;
-    let stderr = child.stderr.take().ok_or_else(|| anyhow!("Failed to capture traceroute stderr"))?;
+    let stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| anyhow!("Failed to capture traceroute stdout"))?;
+    let stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| anyhow!("Failed to capture traceroute stderr"))?;
     let used_bytes = Arc::new(AtomicUsize::new(0));
 
     let result = timeout_at(deadline, async {
@@ -95,20 +104,21 @@ async fn run_command_until(
             read_limited(stderr, used_bytes, max_output_bytes),
             async { child.wait().await.map_err(anyhow::Error::from) },
         )
-    }).await;
+    })
+    .await;
 
     match result {
-        Ok(Ok((stdout, _stderr, status))) => Ok(ProcessOutput {
-            status,
-            stdout,
-        }),
+        Ok(Ok((stdout, _stderr, status))) => Ok(ProcessOutput { status, stdout }),
         Ok(Err(error)) => {
             terminate_child(&mut child).await;
             Err(error)
         }
         Err(_) => {
             terminate_child(&mut child).await;
-            bail!("Traceroute timed out after {} seconds", timeout_duration.as_secs())
+            bail!(
+                "Traceroute timed out after {} seconds",
+                timeout_duration.as_secs()
+            )
         }
     }
 }
@@ -127,7 +137,8 @@ async fn run_command(
         Instant::now() + timeout_duration,
         timeout_duration,
         max_output_bytes,
-    ).await
+    )
+    .await
 }
 
 /// Try to execute traceroute with given parameters to test if it works
@@ -139,7 +150,8 @@ async fn try_execute(cmd: &str, args: &[String], target: &[String]) -> Result<Ve
         target,
         Duration::from_secs(settings.traceroute_timeout),
         settings.traceroute_max_output_bytes,
-    ).await?;
+    )
+    .await?;
 
     if output.status.success() {
         Ok(output.stdout)
@@ -154,12 +166,18 @@ async fn traceroute_detect(cmd: &str, args: &[String]) -> bool {
 
     match try_execute(cmd, args, &target).await {
         Ok(_) => {
-            info!("Traceroute autodetect success: {}", args_to_string(cmd, args, &target));
+            info!(
+                "Traceroute autodetect success: {}",
+                args_to_string(cmd, args, &target)
+            );
             true
         }
         Err(e) => {
-            info!("Traceroute autodetect fail, continuing: {} ({})",
-                  args_to_string(cmd, args, &target), e);
+            info!(
+                "Traceroute autodetect fail, continuing: {} ({})",
+                args_to_string(cmd, args, &target),
+                e
+            );
             false
         }
     }
@@ -171,7 +189,9 @@ pub async fn init() {
 
     // Initialize semaphore for limiting concurrent traceroute requests
     let semaphore = Semaphore::new(settings.traceroute_max_concurrent);
-    TRACEROUTE_SEMAPHORE.set(semaphore).expect("Semaphore already initialized");
+    TRACEROUTE_SEMAPHORE
+        .set(semaphore)
+        .expect("Semaphore already initialized");
 
     let mut detected_config = None;
 
@@ -182,7 +202,9 @@ pub async fn init() {
                 bin: bin.clone(),
                 flags: settings.traceroute_flags.clone(),
             };
-            TRACEROUTE_CONFIG.set(Some(config)).expect("Config already initialized");
+            TRACEROUTE_CONFIG
+                .set(Some(config))
+                .expect("Config already initialized");
             return;
         }
     }
@@ -211,9 +233,21 @@ pub async fn init() {
     if detected_config.is_none() {
         let tool_configs = vec![
             // MTR
-            ("mtr", vec!["-w".to_string(), "-c1".to_string(), "-Z1".to_string(), "-G1".to_string(), "-b".to_string()]),
+            (
+                "mtr",
+                vec![
+                    "-w".to_string(),
+                    "-c1".to_string(),
+                    "-Z1".to_string(),
+                    "-G1".to_string(),
+                    "-b".to_string(),
+                ],
+            ),
             // Traceroute (Debian style)
-            ("traceroute", vec!["-q1".to_string(), "-N32".to_string(), "-w1".to_string()]),
+            (
+                "traceroute",
+                vec!["-q1".to_string(), "-N32".to_string(), "-w1".to_string()],
+            ),
             // Traceroute (FreeBSD style)
             ("traceroute", vec!["-q1".to_string(), "-w1".to_string()]),
             // Traceroute (basic)
@@ -235,7 +269,9 @@ pub async fn init() {
         warn!("Traceroute autodetect failed! Traceroute will be disabled");
     }
 
-    TRACEROUTE_CONFIG.set(detected_config).expect("Config already initialized");
+    TRACEROUTE_CONFIG
+        .set(detected_config)
+        .expect("Config already initialized");
 }
 
 /// Execute traceroute command
@@ -257,14 +293,21 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         return Err(anyhow!("Invalid target: query is empty"));
     }
     if trimmed_query.contains(' ') {
-        return Err(anyhow!("Invalid target: contains spaces (parameter injection not allowed)"));
+        return Err(anyhow!(
+            "Invalid target: contains spaces (parameter injection not allowed)"
+        ));
     }
 
     let timeout_duration = Duration::from_secs(settings.traceroute_timeout);
     let deadline = Instant::now() + timeout_duration;
     let _permit = timeout_at(deadline, semaphore.acquire())
         .await
-        .map_err(|_| anyhow!("Traceroute timed out after {} seconds", settings.traceroute_timeout))?
+        .map_err(|_| {
+            anyhow!(
+                "Traceroute timed out after {} seconds",
+                settings.traceroute_timeout
+            )
+        })?
         .map_err(|e| anyhow!("Failed to acquire traceroute semaphore: {}", e))?;
 
     let target = vec![trimmed_query.to_string()];
@@ -275,7 +318,8 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         deadline,
         timeout_duration,
         settings.traceroute_max_output_bytes,
-    ).await?;
+    )
+    .await?;
 
     if output.status.success() {
         let output_str = String::from_utf8_lossy(&output.stdout);
@@ -299,7 +343,10 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
             Ok(result)
         }
     } else {
-        Err(anyhow!("Error executing traceroute: command failed with status: {}", output.status))
+        Err(anyhow!(
+            "Error executing traceroute: command failed with status: {}",
+            output.status
+        ))
     }
 }
 
@@ -336,17 +383,11 @@ mod tests {
     #[tokio::test]
     async fn rejects_oversized_traceroute_output() {
         let args = vec!["-c".to_string()];
-        let script = vec![
-            "i=0; while [ $i -lt 200 ]; do printf x; i=$((i + 1)); done".to_string(),
-        ];
+        let script = vec!["i=0; while [ $i -lt 200 ]; do printf x; i=$((i + 1)); done".to_string()];
 
-        let error = run_command(
-            "/bin/sh",
-            &args,
-            &script,
-            Duration::from_secs(1),
-            64,
-        ).await.unwrap_err();
+        let error = run_command("/bin/sh", &args, &script, Duration::from_secs(1), 64)
+            .await
+            .unwrap_err();
 
         assert_eq!(error.to_string(), "Traceroute output exceeded 64 bytes");
     }
@@ -355,18 +396,11 @@ mod tests {
     async fn timeout_terminates_the_traceroute_child() {
         let marker = MarkerPath::new("traceroute-timeout");
         let args = vec!["-c".to_string()];
-        let script = vec![format!(
-            "sleep 0.2; : > {}",
-            marker.0.display(),
-        )];
+        let script = vec![format!("sleep 0.2; : > {}", marker.0.display(),)];
 
-        let error = run_command(
-            "/bin/sh",
-            &args,
-            &script,
-            Duration::from_millis(20),
-            64,
-        ).await.unwrap_err();
+        let error = run_command("/bin/sh", &args, &script, Duration::from_millis(20), 64)
+            .await
+            .unwrap_err();
 
         assert!(error.to_string().starts_with("Traceroute timed out"));
         tokio::time::sleep(Duration::from_millis(300)).await;
@@ -379,17 +413,8 @@ mod tests {
         let marker_path = marker.0.clone();
         let task = tokio::spawn(async move {
             let args = vec!["-c".to_string()];
-            let script = vec![format!(
-                "sleep 0.2; : > {}",
-                marker_path.display(),
-            )];
-            run_command(
-                "/bin/sh",
-                &args,
-                &script,
-                Duration::from_secs(1),
-                64,
-            ).await
+            let script = vec![format!("sleep 0.2; : > {}", marker_path.display(),)];
+            run_command("/bin/sh", &args, &script, Duration::from_secs(1), 64).await
         });
 
         tokio::time::sleep(Duration::from_millis(20)).await;

@@ -1,12 +1,14 @@
+use crate::settings::Settings;
+use crate::templates::{
+    BgpmapContext, BirdContext, PageContext, QueryErrorContext, TrustedHtml, WhoisContext,
+};
+use crate::{bgpmap, proxy_client, summary_parser, templates, whois};
 use axum::{
     extract::Path,
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
 };
-use crate::settings::Settings;
-use crate::templates::{PageContext, BirdContext, WhoisContext, BgpmapContext, QueryErrorContext, TrustedHtml};
-use crate::{proxy_client, whois, bgpmap, templates, summary_parser};
-use base64::{Engine as _, engine::general_purpose};
+use base64::{engine::general_purpose, Engine as _};
 
 // Redirect to summary page
 pub async fn redirect_to_summary() -> impl IntoResponse {
@@ -24,137 +26,181 @@ pub async fn bird_summary(Path(servers): Path<String>) -> Result<impl IntoRespon
 }
 
 // Bird detail handler
-pub async fn bird_detail(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_detail(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show protocols all {}", protocol);
     handle_bird_command(servers, "detail", command).await
 }
 
 // Bird route handler
-pub async fn bird_route(Path((servers, route)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route(
+    Path((servers, route)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route for {}", route);
     handle_bird_command(servers, "route", command).await
 }
 
 // Bird route all handler
-pub async fn bird_route_all(Path((servers, route)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_all(
+    Path((servers, route)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route for {} all", route);
     handle_bird_command(servers, "route_all", command).await
 }
 
 // Bird route where handler
-pub async fn bird_route_where(Path((servers, prefix)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_where(
+    Path((servers, prefix)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where net ~ [ {} ]", prefix);
     handle_bird_command(servers, "route_where", command).await
 }
 
 // Bird route where all handler
-pub async fn bird_route_where_all(Path((servers, prefix)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_where_all(
+    Path((servers, prefix)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where net ~ [ {} ] all", prefix);
     handle_bird_command(servers, "route_where_all", command).await
 }
 
 // Bird route from protocol handler
-pub async fn bird_route_from_protocol(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_protocol(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route protocol {}", protocol);
     handle_bird_command(servers, "route_from_protocol", command).await
 }
 
 // Bird route from protocol all handler
-pub async fn bird_route_from_protocol_all(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_protocol_all(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route protocol {} all", protocol);
     handle_bird_command(servers, "route_from_protocol_all", command).await
 }
 
 // Bird route from protocol primary handler
-pub async fn bird_route_from_protocol_primary(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_protocol_primary(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route protocol {} primary", protocol);
     handle_bird_command(servers, "route_from_protocol_primary", command).await
 }
 
 // Bird route from protocol all primary handler
-pub async fn bird_route_from_protocol_all_primary(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_protocol_all_primary(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route protocol {} all primary", protocol);
     handle_bird_command(servers, "route_from_protocol_all_primary", command).await
 }
 
 // Bird route filtered from protocol handler
-pub async fn bird_route_filtered_from_protocol(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_filtered_from_protocol(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route filtered protocol {}", protocol);
     handle_bird_command(servers, "route_filtered_from_protocol", command).await
 }
 
 // Bird route filtered from protocol all handler
-pub async fn bird_route_filtered_from_protocol_all(Path((servers, protocol)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_filtered_from_protocol_all(
+    Path((servers, protocol)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route filtered protocol {} all", protocol);
     handle_bird_command(servers, "route_filtered_from_protocol_all", command).await
 }
 
 // Bird route from origin handler
-pub async fn bird_route_from_origin(Path((servers, asn)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_origin(
+    Path((servers, asn)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where bgp_path.last = {}", asn);
     handle_bird_command(servers, "route_from_origin", command).await
 }
 
 // Bird route from origin all handler
-pub async fn bird_route_from_origin_all(Path((servers, asn)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_origin_all(
+    Path((servers, asn)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where bgp_path.last = {} all", asn);
     handle_bird_command(servers, "route_from_origin_all", command).await
 }
 
 // Bird route from origin primary handler
-pub async fn bird_route_from_origin_primary(Path((servers, asn)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_origin_primary(
+    Path((servers, asn)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where bgp_path.last = {} primary", asn);
     handle_bird_command(servers, "route_from_origin_primary", command).await
 }
 
 // Bird route from origin all primary handler
-pub async fn bird_route_from_origin_all_primary(Path((servers, asn)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_from_origin_all_primary(
+    Path((servers, asn)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where bgp_path.last = {} all primary", asn);
     handle_bird_command(servers, "route_from_origin_all_primary", command).await
 }
 
 // Bird generic command handler
-pub async fn bird_generic(Path((servers, command)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_generic(
+    Path((servers, command)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show {}", command);
     handle_bird_command(servers, "generic", command).await
 }
 
 // Bird route generic handler
-pub async fn bird_route_generic(Path((servers, command)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_generic(
+    Path((servers, command)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route {}", command);
     handle_bird_command(servers, "route_generic", command).await
 }
 
 // BGP Map handlers
-pub async fn bird_route_bgpmap(Path((servers, route)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_bgpmap(
+    Path((servers, route)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route for {} all", route);
     handle_bgpmap_command(servers, command, route).await
 }
 
-pub async fn bird_route_where_bgpmap(Path((servers, prefix)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn bird_route_where_bgpmap(
+    Path((servers, prefix)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let command = format!("show route where net ~ [ {} ] all", prefix);
     handle_bgpmap_command(servers, command, prefix).await
 }
 
 // Traceroute handler
-pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Result<impl IntoResponse, Response> {
+pub async fn traceroute(
+    Path((servers, target)): Path<(String, String)>,
+) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
-    
+
     if server_list.len() > settings.servers.len() {
-        return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid request: too many servers specified",
+        )
+            .into_response());
     }
-    
+
     // Validate all servers before processing
     if let Err(e) = proxy_client::validate_servers(&server_list) {
         return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
-    
+
     let mut content = Vec::new();
-    
+
     for server in &server_list {
         let display_name = settings.get_server_display_name(server);
-        
+
         match proxy_client::traceroute_query(server, &target).await {
             Ok(result) => {
                 let bird_context = BirdContext {
@@ -162,7 +208,8 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
                     target: target.clone(),
                     result,
                 };
-                let rendered = templates::render_bird(&bird_context).map_err(template_error_response)?;
+                let rendered =
+                    templates::render_bird(&bird_context).map_err(template_error_response)?;
                 content.push(rendered);
             }
             Err(e) => {
@@ -172,12 +219,16 @@ pub async fn traceroute(Path((servers, target)): Path<(String, String)>) -> Resu
             }
         }
     }
-    
+
     let page_context = build_page_context("traceroute", &servers, &target);
-    
+
     match templates::render_page(&page_context, &content) {
         Ok(html) => Ok(Html(html)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template error: {}", e),
+        )
+            .into_response()),
     }
 }
 
@@ -191,9 +242,7 @@ pub async fn whois(Path(target): Path<String>) -> Result<impl IntoResponse, Resp
             };
             templates::render_whois(&whois_context).map_err(template_error_response)?
         }
-        Err(e) => {
-            render_whois_error(&target, &e.to_string()).map_err(template_error_response)?
-        }
+        Err(e) => render_whois_error(&target, &e.to_string()).map_err(template_error_response)?,
     };
     let page_context = build_whois_page_context(&target);
 
@@ -204,24 +253,32 @@ pub async fn whois(Path(target): Path<String>) -> Result<impl IntoResponse, Resp
 }
 
 // Helper function to handle bird commands
-async fn handle_bird_command(servers: String, option: &str, command: String) -> Result<impl IntoResponse, Response> {
+async fn handle_bird_command(
+    servers: String,
+    option: &str,
+    command: String,
+) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
-    
+
     if server_list.len() > settings.servers.len() {
-        return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid request: too many servers specified",
+        )
+            .into_response());
     }
-    
+
     // Validate all servers before processing
     if let Err(e) = proxy_client::validate_servers(&server_list) {
         return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
-    
+
     let mut content = Vec::new();
-    
+
     for server in &server_list {
         let display_name = settings.get_server_display_name(server);
-        
+
         match proxy_client::bird_query(server, &command).await {
             Ok(result) => {
                 let bird_context = BirdContext {
@@ -230,8 +287,8 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
                     result,
                 };
 
-                let rendered = render_bird_result(&bird_context, option)
-                    .map_err(template_error_response)?;
+                let rendered =
+                    render_bird_result(&bird_context, option).map_err(template_error_response)?;
                 content.push(rendered);
             }
             Err(e) => {
@@ -241,29 +298,41 @@ async fn handle_bird_command(servers: String, option: &str, command: String) -> 
             }
         }
     }
-    
+
     let page_context = build_page_context(option, &servers, &command);
-    
+
     match templates::render_page(&page_context, &content) {
         Ok(html) => Ok(Html(html)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template error: {}", e),
+        )
+            .into_response()),
     }
 }
 
 // Helper function to handle BGP map commands
-async fn handle_bgpmap_command(servers: String, command: String, target: String) -> Result<impl IntoResponse, Response> {
+async fn handle_bgpmap_command(
+    servers: String,
+    command: String,
+    target: String,
+) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
     let server_list = settings.resolve_servers_from_display_names(&servers);
-    
+
     if server_list.len() > settings.servers.len() {
-        return Err((StatusCode::BAD_REQUEST, "Invalid request: too many servers specified").into_response());
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Invalid request: too many servers specified",
+        )
+            .into_response());
     }
-    
+
     // Validate all servers before processing
     if let Err(e) = proxy_client::validate_servers(&server_list) {
         return Err((StatusCode::BAD_REQUEST, e.to_string()).into_response());
     }
-    
+
     let mut responses = Vec::new();
     for server in &server_list {
         match proxy_client::bird_query(server, &command).await {
@@ -271,29 +340,33 @@ async fn handle_bgpmap_command(servers: String, command: String, target: String)
             Err(e) => responses.push(format!("Error from {}: {}", server, e)),
         }
     }
-    
+
     let dot_graph = bgpmap::bird_route_to_graphviz(&server_list, &responses, &target);
     let encoded_graph = general_purpose::STANDARD.encode(dot_graph);
-    
+
     let bgpmap_context = BgpmapContext {
         target: target.clone(),
         result: encoded_graph,
     };
-    
+
     let content = templates::render_bgpmap(&bgpmap_context).map_err(template_error_response)?;
-    
+
     let page_context = build_page_context("bgpmap", &servers, &target);
-    
+
     match templates::render_page(&page_context, &[content]) {
         Ok(html) => Ok(Html(html)),
-        Err(e) => Err((StatusCode::INTERNAL_SERVER_ERROR, format!("Template error: {}", e)).into_response()),
+        Err(e) => Err((
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Template error: {}", e),
+        )
+            .into_response()),
     }
 }
 
 // Helper function to build page context
 fn build_page_context(option: &str, servers: &str, command: &str) -> PageContext {
     let settings = Settings::global();
-    
+
     PageContext {
         title: format!("{} - {} {}", settings.title_brand, option, command),
         brand: settings.navbar_brand.clone(),
@@ -313,7 +386,7 @@ fn build_page_context(option: &str, servers: &str, command: &str) -> PageContext
 // Helper function to build whois page context
 fn build_whois_page_context(target: &str) -> PageContext {
     let settings = Settings::global();
-    
+
     PageContext {
         title: format!("{} - whois {}", settings.title_brand, target),
         brand: settings.navbar_brand.clone(),
@@ -335,16 +408,46 @@ fn get_options() -> Vec<(String, String)> {
     vec![
         ("summary".to_string(), "Summary".to_string()),
         ("detail".to_string(), "Detail".to_string()),
-        ("route_from_protocol".to_string(), "Route from protocol".to_string()),
-        ("route_from_protocol_all".to_string(), "Route from protocol all".to_string()),
-        ("route_from_protocol_primary".to_string(), "Route from protocol primary".to_string()),
-        ("route_from_protocol_all_primary".to_string(), "Route from protocol all primary".to_string()),
-        ("route_filtered_from_protocol".to_string(), "Route filtered from protocol".to_string()),
-        ("route_filtered_from_protocol_all".to_string(), "Route filtered from protocol all".to_string()),
-        ("route_from_origin".to_string(), "Route from origin".to_string()),
-        ("route_from_origin_all".to_string(), "Route from origin all".to_string()),
-        ("route_from_origin_primary".to_string(), "Route from origin primary".to_string()),
-        ("route_from_origin_all_primary".to_string(), "Route from origin all primary".to_string()),
+        (
+            "route_from_protocol".to_string(),
+            "Route from protocol".to_string(),
+        ),
+        (
+            "route_from_protocol_all".to_string(),
+            "Route from protocol all".to_string(),
+        ),
+        (
+            "route_from_protocol_primary".to_string(),
+            "Route from protocol primary".to_string(),
+        ),
+        (
+            "route_from_protocol_all_primary".to_string(),
+            "Route from protocol all primary".to_string(),
+        ),
+        (
+            "route_filtered_from_protocol".to_string(),
+            "Route filtered from protocol".to_string(),
+        ),
+        (
+            "route_filtered_from_protocol_all".to_string(),
+            "Route filtered from protocol all".to_string(),
+        ),
+        (
+            "route_from_origin".to_string(),
+            "Route from origin".to_string(),
+        ),
+        (
+            "route_from_origin_all".to_string(),
+            "Route from origin all".to_string(),
+        ),
+        (
+            "route_from_origin_primary".to_string(),
+            "Route from origin primary".to_string(),
+        ),
+        (
+            "route_from_origin_all_primary".to_string(),
+            "Route from origin all primary".to_string(),
+        ),
         ("route".to_string(), "Route".to_string()),
         ("route_all".to_string(), "Route all".to_string()),
         ("route_where".to_string(), "Route where".to_string()),
@@ -354,16 +457,18 @@ fn get_options() -> Vec<(String, String)> {
         ("whois".to_string(), "Whois".to_string()),
         ("traceroute".to_string(), "Traceroute".to_string()),
         ("route_bgpmap".to_string(), "Route BGP map".to_string()),
-        ("route_where_bgpmap".to_string(), "Route where BGP map".to_string()),
+        (
+            "route_where_bgpmap".to_string(),
+            "Route where BGP map".to_string(),
+        ),
     ]
 }
 
 fn render_bird_result(context: &BirdContext, option: &str) -> anyhow::Result<TrustedHtml> {
     if option == "summary" && context.result.starts_with("Name") {
-        if let Ok(summary_context) = summary_parser::parse_summary(
-            &context.result,
-            context.server_name.clone(),
-        ) {
+        if let Ok(summary_context) =
+            summary_parser::parse_summary(&context.result, context.server_name.clone())
+        {
             let summary = templates::render_summary(&summary_context)?;
             return templates::render_bird_with_html(context, &summary);
         }
@@ -372,7 +477,11 @@ fn render_bird_result(context: &BirdContext, option: &str) -> anyhow::Result<Tru
     templates::render_bird(context)
 }
 
-fn render_traceroute_error(server_name: &str, target: &str, error: &str) -> anyhow::Result<TrustedHtml> {
+fn render_traceroute_error(
+    server_name: &str,
+    target: &str,
+    error: &str,
+) -> anyhow::Result<TrustedHtml> {
     render_query_error(format!("{}: traceroute {}", server_name, target), error)
 }
 
@@ -395,7 +504,8 @@ fn template_error_response(error: anyhow::Error) -> Response {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
         format!("Template error: {}", error),
-    ).into_response()
+    )
+        .into_response()
 }
 
 #[cfg(test)]
