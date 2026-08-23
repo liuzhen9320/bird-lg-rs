@@ -27,15 +27,3 @@ hyper.workspace = true
 hyper-util.workspace = true
 shlex = { version = "2.0", default-features = false }
 subtle.workspace = true
-
-[profile.release]
-opt-level = "z"         # 最大体积优化
-lto = "fat"            # 完整链接时优化
-codegen-units = 1       # 单个代码生成单元
-panic = "abort"         # abort而不是unwind
-strip = "symbols"       # 去除符号和调试信息
-overflow-checks = false # 禁用溢出检查（生产环境）
-
-[profile.release.package."*"]
-opt-level = "z"
-strip = "symbols"

@@ -20,12 +20,6 @@ This project serves as a drop-in replacement for `bird-lg-go`, maintaining full 
 - **🛡️ Memory safety** and enhanced reliability guarantees
 - **🔧 Zero-configuration migration** from existing bird-lg-go deployments
 
-## Build Instructions
-
-Ensure you have **Docker Engine** installed on your system.
-
-Execute `./build.sh` to build images for both the frontend and proxy components.
-
 ## 🌐 Frontend
 
 The frontend delivers an intuitive web interface enabling users to monitor BGP states, execute traceroutes, perform whois queries, and visualize network topology.

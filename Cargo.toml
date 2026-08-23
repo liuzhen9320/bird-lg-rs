@@ -12,19 +12,15 @@ description = "BIRD Looking Glass in Rust with more feature"
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
 axum = "0.8"
-axum-extra = "0.12"
 tower = "0.5"
 tower-http = { version = "0.7", features = ["fs", "cors", "trace"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-serde_yaml = "0.9"
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive", "env"] }
-config = "0.15"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tera = "1.19"
-url = "2.0"
 regex = "1.0"
 reqwest = { version = "0.13", features = ["json", "query"] }
 base64 = "0.23"
@@ -33,3 +29,15 @@ html-escape = "0.2"
 subtle = "2.6"
 hyper = { version = "1.0", features = ["full"] }
 hyper-util = { version = "0.1", features = ["full"] }
+
+[profile.release]
+opt-level = "z"         # 最大体积优化
+lto = "fat"            # 完整链接时优化
+codegen-units = 1       # 单个代码生成单元
+panic = "abort"         # abort而不是unwind
+strip = "symbols"       # 去除符号和调试信息
+overflow-checks = false # 禁用溢出检查（生产环境）
+
+[profile.release.package."*"]
+opt-level = "z"
+strip = "symbols"
