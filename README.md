@@ -56,6 +56,8 @@ All configuration options maintain complete compatibility with bird-lg-go:
 | auth_enabled       | --auth-enabled       | BIRDLG_AUTH_ENABLED       | enable token-based authentication for proxy requests (default false)                   |
 | auth_token         | --auth-token         | BIRDLG_AUTH_TOKEN         | authentication token for proxy requests                                                |
 
+When a command-line parameter and its environment variable are both set, the command-line value takes precedence.
+
 ### Example Usage
 
 ```bash
@@ -82,6 +84,8 @@ All configuration parameters maintain full compatibility with bird-lg-go:
 | bird_restrict_cmds        | --bird-restrict-cmds        | BIRDLG_BIRD_RESTRICT_CMDS        | restrict Bird queries to show protocols and show route commands (default true) |
 | auth_enabled              | --auth-enabled              | BIRDLG_AUTH_ENABLED              | enable token-based authentication (default false)                              |
 | auth_token                | --auth-token                | BIRDLG_AUTH_TOKEN                | authentication token for API access                                            |
+
+When a command-line parameter and its environment variable are both set, the command-line value takes precedence.
 
 ### Example Usage
 

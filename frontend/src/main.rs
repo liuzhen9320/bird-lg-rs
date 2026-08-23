@@ -45,79 +45,79 @@ use settings::Settings;
 #[command(author, version, about, long_about = None)]
 struct Args {
     /// Server name prefixes, separated by comma
-    #[arg(long, value_delimiter = ',')]
+    #[arg(long, env = "BIRDLG_SERVERS", value_delimiter = ',')]
     servers: Vec<String>,
 
     /// Server name domain suffixes
-    #[arg(long, default_value = "")]
+    #[arg(long, env = "BIRDLG_DOMAIN", default_value = "")]
     domain: String,
 
     /// Address bird-lg is listening on (TCP port or Unix socket path)
-    #[arg(long, default_value = "5000")]
+    #[arg(long, env = "BIRDLG_LISTEN", default_value = "5000")]
     listen: String,
 
     /// Port bird-lgproxy is running on
-    #[arg(long, default_value = "8000")]
+    #[arg(long, env = "BIRDLG_PROXY_PORT", default_value = "8000")]
     proxy_port: u16,
 
     /// Whois server for queries
-    #[arg(long, default_value = "whois.verisign-grs.com")]
+    #[arg(long, env = "BIRDLG_WHOIS", default_value = "whois.verisign-grs.com")]
     whois: String,
 
     /// DNS zone to query ASN information
-    #[arg(long, default_value = "asn.cymru.com")]
+    #[arg(long, env = "BIRDLG_DNS_INTERFACE", default_value = "asn.cymru.com")]
     dns_interface: String,
 
     /// The infos displayed in bgpmap, separated by comma
-    #[arg(long, default_value = "asn,as-name,ASName,descr")]
+    #[arg(long, env = "BIRDLG_BGPMAP_INFO", default_value = "asn,as-name,ASName,descr")]
     bgpmap_info: String,
 
     /// Prefix of page titles in browser tabs
-    #[arg(long, default_value = "Bird-lg Rust")]
+    #[arg(long, env = "BIRDLG_TITLE_BRAND", default_value = "Bird-lg Rust")]
     title_brand: String,
 
     /// Brand to show in the navigation bar
-    #[arg(long, default_value = "Bird-lg Rust")]
+    #[arg(long, env = "BIRDLG_NAVBAR_BRAND", default_value = "Bird-lg Rust")]
     navbar_brand: String,
 
     /// The url of the brand to show in the navigation bar
-    #[arg(long, default_value = "/")]
+    #[arg(long, env = "BIRDLG_NAVBAR_BRAND_URL", default_value = "/")]
     navbar_brand_url: String,
 
     /// The text of "All servers" button in the navigation bar
-    #[arg(long, default_value = "ALL Servers")]
+    #[arg(long, env = "BIRDLG_NAVBAR_ALL_SERVERS", default_value = "ALL Servers")]
     navbar_all_servers: String,
 
     /// The URL of "All servers" button
-    #[arg(long, default_value = "all")]
+    #[arg(long, env = "BIRDLG_NAVBAR_ALL_URL", default_value = "all")]
     navbar_all_url: String,
 
     /// Apply network-specific changes for some networks
-    #[arg(long, default_value = "")]
+    #[arg(long, env = "BIRDLG_NET_SPECIFIC_MODE", default_value = "")]
     net_specific_mode: String,
 
     /// Protocol types to show in summary tables (comma separated list)
-    #[arg(long, value_delimiter = ',')]
+    #[arg(long, env = "BIRDLG_PROTOCOL_FILTER", value_delimiter = ',')]
     protocol_filter: Option<Vec<String>>,
 
     /// Protocol names to hide in summary tables (RE2 syntax)
-    #[arg(long, default_value = "")]
+    #[arg(long, env = "BIRDLG_NAME_FILTER", default_value = "")]
     name_filter: String,
 
     /// Time before request timed out, in seconds
-    #[arg(long, default_value = "120")]
+    #[arg(long, env = "BIRDLG_TIMEOUT", default_value = "120")]
     timeout: u64,
 
     /// Telegram bot name
-    #[arg(long, default_value = "")]
+    #[arg(long, env = "BIRDLG_TELEGRAM_BOT_NAME", default_value = "")]
     telegram_bot_name: String,
 
     /// Enable token-based authentication for proxy requests
-    #[arg(long, default_value_t = false)]
+    #[arg(long, env = "BIRDLG_AUTH_ENABLED", default_value_t = false)]
     auth_enabled: bool,
 
     /// Authentication token for proxy requests
-    #[arg(long)]
+    #[arg(long, env = "BIRDLG_AUTH_TOKEN")]
     auth_token: Option<String>,
 }
 
@@ -287,4 +287,110 @@ async fn main() -> anyhow::Result<()> {
     axum::serve(listener, app).await?;
 
     Ok(())
-} 
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{env, ffi::OsString};
+
+    const CONFIG_ENV_VARS: &[&str] = &[
+        "BIRDLG_SERVERS", "BIRDLG_DOMAIN", "BIRDLG_LISTEN", "BIRDLG_PROXY_PORT",
+        "BIRDLG_WHOIS", "BIRDLG_DNS_INTERFACE", "BIRDLG_BGPMAP_INFO",
+        "BIRDLG_TITLE_BRAND", "BIRDLG_NAVBAR_BRAND", "BIRDLG_NAVBAR_BRAND_URL",
+        "BIRDLG_NAVBAR_ALL_SERVERS", "BIRDLG_NAVBAR_ALL_URL", "BIRDLG_NET_SPECIFIC_MODE",
+        "BIRDLG_PROTOCOL_FILTER", "BIRDLG_NAME_FILTER", "BIRDLG_TIMEOUT",
+        "BIRDLG_TELEGRAM_BOT_NAME", "BIRDLG_AUTH_ENABLED", "BIRDLG_AUTH_TOKEN",
+    ];
+
+    struct EnvGuard(Vec<(&'static str, Option<OsString>)>);
+
+    impl EnvGuard {
+        fn new() -> Self {
+            Self(CONFIG_ENV_VARS.iter().map(|key| (*key, env::var_os(key))).collect())
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            for (key, value) in &self.0 {
+                match value {
+                    Some(value) => env::set_var(key, value),
+                    None => env::remove_var(key),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn environment_configuration_has_expected_precedence_and_validation() {
+        let _guard = EnvGuard::new();
+        let values = [
+            ("BIRDLG_SERVERS", "edge-a,192.0.2.10"),
+            ("BIRDLG_DOMAIN", "example.net"),
+            ("BIRDLG_LISTEN", "5100"),
+            ("BIRDLG_PROXY_PORT", "8100"),
+            ("BIRDLG_WHOIS", "whois.example.net"),
+            ("BIRDLG_DNS_INTERFACE", "asn.example.net"),
+            ("BIRDLG_BGPMAP_INFO", "asn,descr"),
+            ("BIRDLG_TITLE_BRAND", "Example LG"),
+            ("BIRDLG_NAVBAR_BRAND", "Example Network"),
+            ("BIRDLG_NAVBAR_BRAND_URL", "https://example.net"),
+            ("BIRDLG_NAVBAR_ALL_SERVERS", "All PoPs"),
+            ("BIRDLG_NAVBAR_ALL_URL", "all-pops"),
+            ("BIRDLG_NET_SPECIFIC_MODE", "dn42"),
+            ("BIRDLG_PROTOCOL_FILTER", "BGP,Pipe"),
+            ("BIRDLG_NAME_FILTER", "internal.*"),
+            ("BIRDLG_TIMEOUT", "45"),
+            ("BIRDLG_TELEGRAM_BOT_NAME", "example_bot"),
+            ("BIRDLG_AUTH_ENABLED", "true"),
+            ("BIRDLG_AUTH_TOKEN", "environment-token"),
+        ];
+        for (key, value) in values {
+            env::set_var(key, value);
+        }
+
+        let args = Args::try_parse_from(["bird-lg-rs"]).unwrap();
+        assert_eq!(args.servers, ["edge-a", "192.0.2.10"]);
+        assert_eq!(args.domain, "example.net");
+        assert_eq!(args.listen, "5100");
+        assert_eq!(args.proxy_port, 8100);
+        assert_eq!(args.whois, "whois.example.net");
+        assert_eq!(args.dns_interface, "asn.example.net");
+        assert_eq!(args.bgpmap_info, "asn,descr");
+        assert_eq!(args.title_brand, "Example LG");
+        assert_eq!(args.navbar_brand, "Example Network");
+        assert_eq!(args.navbar_brand_url, "https://example.net");
+        assert_eq!(args.navbar_all_servers, "All PoPs");
+        assert_eq!(args.navbar_all_url, "all-pops");
+        assert_eq!(args.net_specific_mode, "dn42");
+        assert_eq!(args.protocol_filter.unwrap(), ["BGP", "Pipe"]);
+        assert_eq!(args.name_filter, "internal.*");
+        assert_eq!(args.timeout, 45);
+        assert_eq!(args.telegram_bot_name, "example_bot");
+        assert!(args.auth_enabled);
+        assert_eq!(args.auth_token.as_deref(), Some("environment-token"));
+
+        let settings = Settings::from_args(Args::try_parse_from(["bird-lg-rs"]).unwrap()).unwrap();
+        assert_eq!(settings.servers, ["edge-a.example.net", "192.0.2.10"]);
+
+        env::set_var("BIRDLG_AUTH_ENABLED", "false");
+        let cli_args = Args::try_parse_from([
+            "bird-lg-rs", "--servers=cli-a,cli-b", "--proxy-port=9100", "--auth-enabled",
+        ]).unwrap();
+        assert_eq!(cli_args.servers, ["cli-a", "cli-b"]);
+        assert_eq!(cli_args.proxy_port, 9100);
+        assert!(cli_args.auth_enabled);
+
+        let mut invalid = Args::try_parse_from(["bird-lg-rs"]).unwrap();
+        invalid.servers.clear();
+        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
+            "At least one non-empty server must be configured");
+
+        let mut invalid = Args::try_parse_from(["bird-lg-rs"]).unwrap();
+        invalid.auth_enabled = true;
+        invalid.auth_token = Some(" ".to_string());
+        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
+            "Authentication token is required when authentication is enabled");
+    }
+}

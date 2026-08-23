@@ -23,6 +23,21 @@ static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
 impl Settings {
     pub async fn init(args: Args) -> Result<()> {
+        let settings = Self::from_args(args)?;
+
+        info!("Settings initialized");
+
+        SETTINGS.set(settings).map_err(|_| anyhow::anyhow!("Settings already initialized"))?;
+        Ok(())
+    }
+
+    pub(crate) fn from_args(args: Args) -> Result<Self> {
+        if args.auth_enabled
+            && !matches!(args.auth_token.as_deref(), Some(token) if !token.trim().is_empty())
+        {
+            anyhow::bail!("Authentication token is required when authentication is enabled");
+        }
+
         let mut allowed_nets = Vec::new();
 
         // Parse allowed IPs/networks
@@ -47,7 +62,7 @@ impl Settings {
             Vec::new()
         };
 
-        let settings = Settings {
+        Ok(Settings {
             bird_socket: args.bird,
             listen: args.listen,
             allowed_nets,
@@ -58,12 +73,7 @@ impl Settings {
             bird_restrict_cmds: args.bird_restrict_cmds,
             auth_enabled: args.auth_enabled,
             auth_token: args.auth_token,
-        };
-
-        info!("Settings initialized: {:?}", settings);
-
-        SETTINGS.set(settings).map_err(|_| anyhow::anyhow!("Settings already initialized"))?;
-        Ok(())
+        })
     }
 
     pub fn global() -> &'static Settings {
