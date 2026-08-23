@@ -256,6 +256,7 @@ dependencies = [
  "serde",
  "serde_json",
  "shlex 2.0.1",
+ "subtle",
  "tokio",
  "tower",
  "tower-http 0.7.0",

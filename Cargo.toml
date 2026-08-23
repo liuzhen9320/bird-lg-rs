@@ -30,5 +30,6 @@ reqwest = { version = "0.13", features = ["json", "query"] }
 base64 = "0.23"
 ipnet = "2.9"
 html-escape = "0.2"
+subtle = "2.6"
 hyper = { version = "1.0", features = ["full"] }
-hyper-util = { version = "0.1", features = ["full"] } 
+hyper-util = { version = "0.1", features = ["full"] }

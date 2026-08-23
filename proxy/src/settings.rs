@@ -1,11 +1,12 @@
 use crate::Args;
 use anyhow::Result;
 use ipnet::IpNet;
+use std::fmt;
 use std::net::IpAddr;
 use std::sync::OnceLock;
 use tracing::{debug, info};
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Settings {
     pub bird_socket: String,
     pub bird_timeout: u64,
@@ -21,6 +22,33 @@ pub struct Settings {
     pub bird_restrict_cmds: bool,
     pub auth_enabled: bool,
     pub auth_token: Option<String>,
+}
+
+impl fmt::Debug for Settings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings")
+            .field("bird_socket", &self.bird_socket)
+            .field("bird_timeout", &self.bird_timeout)
+            .field("bird_max_response_bytes", &self.bird_max_response_bytes)
+            .field("listen", &self.listen)
+            .field("allowed_nets", &self.allowed_nets)
+            .field("traceroute_bin", &self.traceroute_bin)
+            .field("traceroute_flags", &self.traceroute_flags)
+            .field("traceroute_raw", &self.traceroute_raw)
+            .field("traceroute_max_concurrent", &self.traceroute_max_concurrent)
+            .field("traceroute_timeout", &self.traceroute_timeout)
+            .field(
+                "traceroute_max_output_bytes",
+                &self.traceroute_max_output_bytes,
+            )
+            .field("bird_restrict_cmds", &self.bird_restrict_cmds)
+            .field("auth_enabled", &self.auth_enabled)
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
+            .finish()
+    }
 }
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();

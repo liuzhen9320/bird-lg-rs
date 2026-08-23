@@ -480,6 +480,9 @@ mod tests {
 
         let settings = Settings::from_args(Args::try_parse_from(["bird-lg-rs"]).unwrap()).unwrap();
         assert_eq!(settings.servers, ["edge-a.example.net", "192.0.2.10"]);
+        let settings_debug = format!("{:?}", settings);
+        assert!(!settings_debug.contains("environment-token"));
+        assert!(settings_debug.contains("auth_token: Some(\"[REDACTED]\")"));
 
         env::set_var("BIRDLG_AUTH_ENABLED", "false");
         let cli_args = Args::try_parse_from([
@@ -500,12 +503,14 @@ mod tests {
             "At least one non-empty server must be configured"
         );
 
-        let mut invalid = Args::try_parse_from(["bird-lg-rs"]).unwrap();
-        invalid.auth_enabled = true;
-        invalid.auth_token = Some(" ".to_string());
-        assert_eq!(
-            Settings::from_args(invalid).unwrap_err().to_string(),
-            "Authentication token is required when authentication is enabled"
-        );
+        for invalid_token in [None, Some(String::new()), Some(" ".to_string())] {
+            let mut invalid = Args::try_parse_from(["bird-lg-rs"]).unwrap();
+            invalid.auth_enabled = true;
+            invalid.auth_token = invalid_token;
+            assert_eq!(
+                Settings::from_args(invalid).unwrap_err().to_string(),
+                "Authentication token is required when authentication is enabled"
+            );
+        }
     }
 }

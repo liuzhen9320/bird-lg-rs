@@ -26,6 +26,7 @@ regex.workspace = true
 hyper.workspace = true
 hyper-util.workspace = true
 shlex = { version = "2.0", default-features = false }
+subtle.workspace = true
 
 [profile.release]
 opt-level = "z"         # 最大体积优化
@@ -37,4 +38,4 @@ overflow-checks = false # 禁用溢出检查（生产环境）
 
 [profile.release.package."*"]
 opt-level = "z"
-strip = "symbols" 
+strip = "symbols"

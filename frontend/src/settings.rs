@@ -1,9 +1,10 @@
 use crate::Args;
 use anyhow::Result;
+use std::fmt;
 use std::sync::OnceLock;
 use tracing::info;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Settings {
     pub servers: Vec<String>,
     pub servers_display: Vec<String>,
@@ -33,6 +34,36 @@ pub struct Settings {
     pub timeout: u64,
     pub auth_enabled: bool,
     pub auth_token: Option<String>,
+}
+
+impl fmt::Debug for Settings {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Settings")
+            .field("servers", &self.servers)
+            .field("servers_display", &self.servers_display)
+            .field("domain", &self.domain)
+            .field("proxy_port", &self.proxy_port)
+            .field("whois_server", &self.whois_server)
+            .field("listen", &self.listen)
+            .field("dns_interface", &self.dns_interface)
+            .field("net_specific_mode", &self.net_specific_mode)
+            .field("title_brand", &self.title_brand)
+            .field("navbar_brand", &self.navbar_brand)
+            .field("navbar_brand_url", &self.navbar_brand_url)
+            .field("navbar_all_server", &self.navbar_all_server)
+            .field("navbar_all_url", &self.navbar_all_url)
+            .field("bgpmap_info", &self.bgpmap_info)
+            .field("telegram_bot_name", &self.telegram_bot_name)
+            .field("protocol_filter", &self.protocol_filter)
+            .field("name_filter", &self.name_filter)
+            .field("timeout", &self.timeout)
+            .field("auth_enabled", &self.auth_enabled)
+            .field(
+                "auth_token",
+                &self.auth_token.as_ref().map(|_| "[REDACTED]"),
+            )
+            .finish()
+    }
 }
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();
