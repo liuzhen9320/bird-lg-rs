@@ -47,6 +47,14 @@ struct Args {
     #[arg(long, env = "BIRD_SOCKET", default_value = "/var/run/bird/bird.ctl")]
     bird: String,
 
+    /// Maximum duration of a BIRD command, in seconds
+    #[arg(long, env = "BIRDLG_BIRD_TIMEOUT", default_value_t = 10)]
+    bird_timeout: u64,
+
+    /// Maximum BIRD response size, in bytes
+    #[arg(long, env = "BIRDLG_BIRD_MAX_RESPONSE_BYTES", default_value_t = 1_048_576)]
+    bird_max_response_bytes: usize,
+
     /// Listen address (TCP port or Unix socket path)
     #[arg(long, env = "BIRDLG_PROXY_PORT", default_value = "8000")]
     listen: String,
@@ -66,6 +74,14 @@ struct Args {
     /// Maximum number of concurrent traceroute requests
     #[arg(long, env = "BIRDLG_TRACEROUTE_MAX_CONCURRENT", default_value_t = 10)]
     traceroute_max_concurrent: usize,
+
+    /// Maximum duration of a traceroute request, in seconds
+    #[arg(long, env = "BIRDLG_TRACEROUTE_TIMEOUT", default_value_t = 120)]
+    traceroute_timeout: u64,
+
+    /// Maximum combined traceroute output size, in bytes
+    #[arg(long, env = "BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES", default_value_t = 1_048_576)]
+    traceroute_max_output_bytes: usize,
 
     /// Restrict Bird queries to show protocols and show route commands
     #[arg(long, env = "BIRDLG_BIRD_RESTRICT_CMDS", default_value_t = true)]
@@ -275,9 +291,11 @@ mod tests {
     use std::{env, ffi::OsString};
 
     const CONFIG_ENV_VARS: &[&str] = &[
-        "ALLOWED_IPS", "BIRD_SOCKET", "BIRDLG_PROXY_PORT", "BIRDLG_TRACEROUTE_BIN",
+        "ALLOWED_IPS", "BIRD_SOCKET", "BIRDLG_BIRD_TIMEOUT", "BIRDLG_BIRD_MAX_RESPONSE_BYTES",
+        "BIRDLG_PROXY_PORT", "BIRDLG_TRACEROUTE_BIN",
         "BIRDLG_TRACEROUTE_FLAGS", "BIRDLG_TRACEROUTE_RAW",
-        "BIRDLG_TRACEROUTE_MAX_CONCURRENT", "BIRDLG_BIRD_RESTRICT_CMDS",
+        "BIRDLG_TRACEROUTE_MAX_CONCURRENT", "BIRDLG_TRACEROUTE_TIMEOUT",
+        "BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES", "BIRDLG_BIRD_RESTRICT_CMDS",
         "BIRDLG_AUTH_ENABLED", "BIRDLG_AUTH_TOKEN",
     ];
 
@@ -306,11 +324,15 @@ mod tests {
         let values = [
             ("ALLOWED_IPS", "192.0.2.1,2001:db8::/32"),
             ("BIRD_SOCKET", "/run/bird/example.ctl"),
+            ("BIRDLG_BIRD_TIMEOUT", "7"),
+            ("BIRDLG_BIRD_MAX_RESPONSE_BYTES", "65536"),
             ("BIRDLG_PROXY_PORT", "8100"),
             ("BIRDLG_TRACEROUTE_BIN", "/usr/bin/traceroute"),
             ("BIRDLG_TRACEROUTE_FLAGS", "-m 12 --wait=2"),
             ("BIRDLG_TRACEROUTE_RAW", "true"),
             ("BIRDLG_TRACEROUTE_MAX_CONCURRENT", "17"),
+            ("BIRDLG_TRACEROUTE_TIMEOUT", "90"),
+            ("BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES", "131072"),
             ("BIRDLG_BIRD_RESTRICT_CMDS", "false"),
             ("BIRDLG_AUTH_ENABLED", "true"),
             ("BIRDLG_AUTH_TOKEN", "environment-token"),
@@ -322,11 +344,15 @@ mod tests {
         let args = Args::try_parse_from(["bird-lgproxy-rs"]).unwrap();
         assert_eq!(args.allowed.as_ref().unwrap(), &["192.0.2.1", "2001:db8::/32"]);
         assert_eq!(args.bird, "/run/bird/example.ctl");
+        assert_eq!(args.bird_timeout, 7);
+        assert_eq!(args.bird_max_response_bytes, 65_536);
         assert_eq!(args.listen, "8100");
         assert_eq!(args.traceroute_bin.as_deref(), Some("/usr/bin/traceroute"));
         assert_eq!(args.traceroute_flags.as_deref(), Some("-m 12 --wait=2"));
         assert!(args.traceroute_raw);
         assert_eq!(args.traceroute_max_concurrent, 17);
+        assert_eq!(args.traceroute_timeout, 90);
+        assert_eq!(args.traceroute_max_output_bytes, 131_072);
         assert!(!args.bird_restrict_cmds);
         assert!(args.auth_enabled);
         assert_eq!(args.auth_token.as_deref(), Some("environment-token"));
@@ -338,6 +364,10 @@ mod tests {
             .map(ToString::to_string).collect();
         assert_eq!(allowed_nets, ["192.0.2.1/32", "2001:db8::/32"]);
         assert_eq!(settings.traceroute_flags, ["-m", "12", "--wait=2"]);
+        assert_eq!(settings.bird_timeout, 7);
+        assert_eq!(settings.bird_max_response_bytes, 65_536);
+        assert_eq!(settings.traceroute_timeout, 90);
+        assert_eq!(settings.traceroute_max_output_bytes, 131_072);
 
         env::set_var("BIRDLG_AUTH_ENABLED", "false");
         let cli_args = Args::try_parse_from([
@@ -354,6 +384,11 @@ mod tests {
         invalid.auth_token = Some(" ".to_string());
         assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
             "Authentication token is required when authentication is enabled");
+
+        let mut invalid = Args::try_parse_from(["bird-lgproxy-rs"]).unwrap();
+        invalid.traceroute_max_concurrent = 0;
+        assert_eq!(Settings::from_args(invalid).unwrap_err().to_string(),
+            "Traceroute maximum concurrency must be greater than zero");
     }
 
     #[test]

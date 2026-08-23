@@ -1,13 +1,15 @@
-use anyhow::{anyhow, Result};
-use std::io::{BufReader, Write};
+use anyhow::{anyhow, bail, Result};
 use crate::settings::Settings;
+use std::time::Duration;
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWrite, AsyncWriteExt, BufReader};
+use tokio::time::timeout;
 use tracing::debug;
 
 #[cfg(unix)]
-use std::os::unix::net::UnixStream;
+use tokio::net::UnixStream;
 
 #[cfg(not(unix))]
-use std::net::TcpStream;
+use tokio::net::TcpStream;
 
 #[cfg(not(unix))]
 type UnixStream = TcpStream;
@@ -16,117 +18,254 @@ const MAX_LINE_SIZE: usize = 1024;
 
 /// Check if a byte is numeric
 fn is_numeric(b: u8) -> bool {
-    b >= b'0' && b <= b'9'
+    b.is_ascii_digit()
 }
 
-/// Read a line from bird socket, removing preceding status number
-/// Returns if there are more lines
-fn bird_read_line(reader: &mut BufReader<UnixStream>, output: &mut Vec<u8>) -> Result<bool> {
+fn append_bounded(output: &mut Vec<u8>, bytes: &[u8], max_response_bytes: usize) -> Result<()> {
+    if bytes.len() > max_response_bytes.saturating_sub(output.len()) {
+        bail!("BIRD response exceeded {} bytes", max_response_bytes);
+    }
+    output.extend_from_slice(bytes);
+    Ok(())
+}
+
+/// Read a line from the BIRD socket, removing the preceding status number.
+/// Returns whether there are more lines.
+async fn bird_read_line<R>(
+    reader: &mut R,
+    output: &mut Vec<u8>,
+    max_response_bytes: usize,
+) -> Result<bool>
+where
+    R: AsyncRead + Unpin,
+{
     let mut line = Vec::new();
-    
-    // Read line byte by byte up to MAX_LINE_SIZE
-    for _ in 0..MAX_LINE_SIZE {
+
+    loop {
         let mut byte = [0u8; 1];
-        match std::io::Read::read_exact(reader, &mut byte) {
-            Ok(_) => {
-                line.push(byte[0]);
-                if byte[0] == b'\n' {
-                    break;
-                }
-            }
-            Err(e) => {
-                output.extend_from_slice(e.to_string().as_bytes());
-                return Ok(false);
-            }
+        let bytes_read = reader.read(&mut byte).await?;
+        if bytes_read == 0 {
+            bail!("Unexpected EOF from BIRD socket");
+        }
+        if line.len() == MAX_LINE_SIZE {
+            bail!("BIRD response line exceeded {} bytes", MAX_LINE_SIZE);
+        }
+
+        line.push(byte[0]);
+        if byte[0] == b'\n' {
+            break;
         }
     }
 
     debug!("Bird raw line: {:?}", String::from_utf8_lossy(&line));
 
-    // Remove preceding status number if present
-    if line.len() > 4 
-        && is_numeric(line[0]) 
-        && is_numeric(line[1]) 
-        && is_numeric(line[2]) 
-        && is_numeric(line[3]) 
+    if line.len() > 4
+        && is_numeric(line[0])
+        && is_numeric(line[1])
+        && is_numeric(line[2])
+        && is_numeric(line[3])
     {
-        // There is a status number at beginning, remove first 5 bytes (4 digits + space)
-        if line.len() > 6 {
-            output.extend_from_slice(&line[5..]);
+        if line.len() > 5 {
+            append_bounded(output, &line[5..], max_response_bytes)?;
         }
-        // Return true if status is not 0, 8, or 9 (meaning more lines follow)
         Ok(line[0] != b'0' && line[0] != b'8' && line[0] != b'9')
     } else {
-        // No status number, output the line (skip first byte which might be a space)
         if line.len() > 1 {
-            output.extend_from_slice(&line[1..]);
+            append_bounded(output, &line[1..], max_response_bytes)?;
         }
         Ok(true)
     }
 }
 
-/// Write a command to bird socket
-fn bird_write_line(stream: &mut UnixStream, command: &str) -> Result<()> {
-    stream.write_all(format!("{}\n", command).as_bytes())?;
-    stream.flush()?;
+async fn bird_write_line<W>(stream: &mut W, command: &str) -> Result<()>
+where
+    W: AsyncWrite + Unpin,
+{
+    stream.write_all(command.as_bytes()).await?;
+    stream.write_all(b"\n").await?;
+    stream.flush().await?;
     Ok(())
 }
 
 /// Connect to BIRD socket - Unix socket on Unix systems, TCP fallback on others
 #[cfg(unix)]
-fn connect_to_bird(socket_path: &str) -> Result<UnixStream> {
+async fn connect_to_bird(socket_path: &str) -> Result<UnixStream> {
     UnixStream::connect(socket_path)
+        .await
         .map_err(|e| anyhow!("Failed to connect to BIRD Unix socket: {}", e))
 }
 
 #[cfg(not(unix))]
-fn connect_to_bird(socket_path: &str) -> Result<UnixStream> {
-    // On non-Unix systems, treat the socket_path as host:port for TCP connection
+async fn connect_to_bird(socket_path: &str) -> Result<UnixStream> {
     let addr = if socket_path.contains(':') {
         socket_path.to_string()
     } else {
         format!("127.0.0.1:{}", socket_path)
     };
-    
+
     TcpStream::connect(&addr)
+        .await
         .map_err(|e| anyhow!("Failed to connect to BIRD TCP socket: {}", e))
+}
+
+async fn execute_bird_exchange(
+    socket_path: &str,
+    query: &str,
+    max_response_bytes: usize,
+) -> Result<String> {
+    let stream = connect_to_bird(socket_path).await?;
+    let mut reader = BufReader::new(stream);
+
+    let mut greeting = Vec::new();
+    bird_read_line(&mut reader, &mut greeting, max_response_bytes).await?;
+
+    bird_write_line(reader.get_mut(), "restrict").await?;
+
+    let mut restrict_output = Vec::new();
+    bird_read_line(&mut reader, &mut restrict_output, max_response_bytes).await?;
+
+    let restrict_response = String::from_utf8_lossy(&restrict_output);
+    if !restrict_response.contains("Access restricted") {
+        bail!("Could not verify that bird access was restricted");
+    }
+
+    bird_write_line(reader.get_mut(), query).await?;
+
+    let mut output = Vec::new();
+    while bird_read_line(&mut reader, &mut output, max_response_bytes).await? {}
+
+    let result = String::from_utf8_lossy(&output).to_string();
+    debug!("Bird command '{}' output: {}", query, result);
+    Ok(result)
+}
+
+async fn execute_bird_command_with_limits(
+    socket_path: &str,
+    query: &str,
+    execution_timeout: Duration,
+    max_response_bytes: usize,
+) -> Result<String> {
+    timeout(
+        execution_timeout,
+        execute_bird_exchange(socket_path, query, max_response_bytes),
+    )
+    .await
+    .map_err(|_| anyhow!("BIRD command timed out after {} seconds", execution_timeout.as_secs()))?
 }
 
 /// Execute a BIRD command and return the output
 pub async fn execute_bird_command(query: &str) -> Result<String> {
     let settings = Settings::global();
-    
-    // Connect to BIRD socket
-    let mut stream = connect_to_bird(&settings.bird_socket)?;
-    let mut reader = BufReader::new(stream.try_clone().map_err(|e| anyhow!("Failed to clone stream: {}", e))?);
-    
-    // Read initial greeting
-    let mut temp_output = Vec::new();
-    bird_read_line(&mut reader, &mut temp_output)?;
-    
-    // Send restrict command
-    bird_write_line(&mut stream, "restrict")?;
-    
-    // Read restriction confirmation
-    let mut restrict_output = Vec::new();
-    bird_read_line(&mut reader, &mut restrict_output)?;
-    
-    let restrict_response = String::from_utf8_lossy(&restrict_output);
-    if !restrict_response.contains("Access restricted") {
-        return Err(anyhow!("Could not verify that bird access was restricted"));
+    execute_bird_command_with_limits(
+        &settings.bird_socket,
+        query,
+        Duration::from_secs(settings.bird_timeout),
+        settings.bird_max_response_bytes,
+    ).await
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use tokio::io::{AsyncBufReadExt, AsyncWriteExt};
+    use tokio::net::UnixListener;
+
+    static SOCKET_ID: AtomicUsize = AtomicUsize::new(0);
+
+    struct SocketPath(PathBuf);
+
+    impl SocketPath {
+        fn new(test_name: &str) -> Self {
+            let id = SOCKET_ID.fetch_add(1, Ordering::Relaxed);
+            let path = std::env::temp_dir().join(format!(
+                "bird-lg-rs-{}-{}-{}.sock",
+                test_name,
+                std::process::id(),
+                id,
+            ));
+            Self(path)
+        }
     }
-    
-    // Send the actual query
-    bird_write_line(&mut stream, query)?;
-    
-    // Read the response
-    let mut output = Vec::new();
-    while bird_read_line(&mut reader, &mut output)? {
-        // Continue reading until no more lines
+
+    impl Drop for SocketPath {
+        fn drop(&mut self) {
+            let _ = std::fs::remove_file(&self.0);
+        }
     }
-    
-    let result = String::from_utf8_lossy(&output).to_string();
-    debug!("Bird command '{}' output: {}", query, result);
-    
-    Ok(result)
-} 
+
+    async fn serve_bird_response(listener: UnixListener, response: Vec<u8>) {
+        let (stream, _) = listener.accept().await.unwrap();
+        let mut reader = BufReader::new(stream);
+        reader.get_mut().write_all(b"0001 BIRD ready\n").await.unwrap();
+
+        let mut command = String::new();
+        reader.read_line(&mut command).await.unwrap();
+        assert_eq!(command, "restrict\n");
+        reader.get_mut().write_all(b"0001 Access restricted\n").await.unwrap();
+
+        command.clear();
+        reader.read_line(&mut command).await.unwrap();
+        assert_eq!(command, "show route\n");
+        reader.get_mut().write_all(&response).await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn reads_a_bounded_bird_response() {
+        let socket = SocketPath::new("success");
+        let listener = UnixListener::bind(&socket.0).unwrap();
+        let server = tokio::spawn(serve_bird_response(
+            listener,
+            b"0000 route result\n".to_vec(),
+        ));
+
+        let output = execute_bird_command_with_limits(
+            socket.0.to_str().unwrap(),
+            "show route",
+            Duration::from_secs(1),
+            64,
+        ).await.unwrap();
+
+        assert_eq!(output, "route result\n");
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn rejects_an_oversized_bird_response() {
+        let socket = SocketPath::new("oversized");
+        let listener = UnixListener::bind(&socket.0).unwrap();
+        let response = format!("1000 {}\n", "x".repeat(128)).into_bytes();
+        let server = tokio::spawn(serve_bird_response(listener, response));
+
+        let error = execute_bird_command_with_limits(
+            socket.0.to_str().unwrap(),
+            "show route",
+            Duration::from_secs(1),
+            64,
+        ).await.unwrap_err();
+
+        assert_eq!(error.to_string(), "BIRD response exceeded 64 bytes");
+        server.await.unwrap();
+    }
+
+    #[tokio::test]
+    async fn times_out_a_stalled_bird_connection() {
+        let socket = SocketPath::new("timeout");
+        let listener = UnixListener::bind(&socket.0).unwrap();
+        let server = tokio::spawn(async move {
+            let (_stream, _) = listener.accept().await.unwrap();
+            tokio::time::sleep(Duration::from_secs(1)).await;
+        });
+
+        let error = execute_bird_command_with_limits(
+            socket.0.to_str().unwrap(),
+            "show route",
+            Duration::from_millis(20),
+            64,
+        ).await.unwrap_err();
+
+        assert_eq!(error.to_string(), "BIRD command timed out after 0 seconds");
+        server.abort();
+    }
+}

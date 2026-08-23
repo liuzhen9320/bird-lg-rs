@@ -8,12 +8,16 @@ use tracing::{info, debug};
 #[derive(Debug, Clone)]
 pub struct Settings {
     pub bird_socket: String,
+    pub bird_timeout: u64,
+    pub bird_max_response_bytes: usize,
     pub listen: String,
     pub allowed_nets: Vec<IpNet>,
     pub traceroute_bin: Option<String>,
     pub traceroute_flags: Vec<String>,
     pub traceroute_raw: bool,
     pub traceroute_max_concurrent: usize,
+    pub traceroute_timeout: u64,
+    pub traceroute_max_output_bytes: usize,
     pub bird_restrict_cmds: bool,
     pub auth_enabled: bool,
     pub auth_token: Option<String>,
@@ -36,6 +40,16 @@ impl Settings {
             && !matches!(args.auth_token.as_deref(), Some(token) if !token.trim().is_empty())
         {
             anyhow::bail!("Authentication token is required when authentication is enabled");
+        }
+
+        if args.traceroute_max_concurrent == 0 {
+            anyhow::bail!("Traceroute maximum concurrency must be greater than zero");
+        }
+        if args.bird_timeout == 0 || args.traceroute_timeout == 0 {
+            anyhow::bail!("Execution timeouts must be greater than zero");
+        }
+        if args.bird_max_response_bytes == 0 || args.traceroute_max_output_bytes == 0 {
+            anyhow::bail!("Output size limits must be greater than zero");
         }
 
         let mut allowed_nets = Vec::new();
@@ -64,12 +78,16 @@ impl Settings {
 
         Ok(Settings {
             bird_socket: args.bird,
+            bird_timeout: args.bird_timeout,
+            bird_max_response_bytes: args.bird_max_response_bytes,
             listen: args.listen,
             allowed_nets,
             traceroute_bin: args.traceroute_bin,
             traceroute_flags,
             traceroute_raw: args.traceroute_raw,
             traceroute_max_concurrent: args.traceroute_max_concurrent,
+            traceroute_timeout: args.traceroute_timeout,
+            traceroute_max_output_bytes: args.traceroute_max_output_bytes,
             bird_restrict_cmds: args.bird_restrict_cmds,
             auth_enabled: args.auth_enabled,
             auth_token: args.auth_token,

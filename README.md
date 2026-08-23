@@ -76,11 +76,15 @@ All configuration parameters maintain full compatibility with bird-lg-go:
 | ------------------------- | --------------------------- | -------------------------------- | ------------------------------------------------------------------------------ |
 | allowed                   | --allowed                   | ALLOWED_IPS                      | IPs or networks allowed to access this proxy, separated by commas              |
 | bird                      | --bird                      | BIRD_SOCKET                      | socket file for bird (default "/var/run/bird/bird.ctl")                        |
+| bird_timeout              | --bird-timeout              | BIRDLG_BIRD_TIMEOUT              | maximum duration of a BIRD command in seconds (default 10)                     |
+| bird_max_response_bytes   | --bird-max-response-bytes   | BIRDLG_BIRD_MAX_RESPONSE_BYTES   | maximum BIRD response size in bytes (default 1048576)                          |
 | listen                    | --listen                    | BIRDLG_PROXY_PORT                | listen address (default "8000")                                                |
 | traceroute_bin            | --traceroute-bin            | BIRDLG_TRACEROUTE_BIN            | traceroute binary file                                                         |
 | traceroute_flags          | --traceroute-flags          | BIRDLG_TRACEROUTE_FLAGS          | traceroute flags, supports multiple flags separated with space                 |
 | traceroute_raw            | --traceroute-raw            | BIRDLG_TRACEROUTE_RAW            | whether to display traceroute outputs raw (default false)                      |
 | traceroute_max_concurrent | --traceroute-max-concurrent | BIRDLG_TRACEROUTE_MAX_CONCURRENT | maximum number of concurrent traceroute requests (default 10)                  |
+| traceroute_timeout        | --traceroute-timeout        | BIRDLG_TRACEROUTE_TIMEOUT        | maximum traceroute duration in seconds (default 120)                           |
+| traceroute_max_output_bytes | --traceroute-max-output-bytes | BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES | maximum combined traceroute output in bytes (default 1048576)                |
 | bird_restrict_cmds        | --bird-restrict-cmds        | BIRDLG_BIRD_RESTRICT_CMDS        | restrict Bird queries to show protocols and show route commands (default true) |
 | auth_enabled              | --auth-enabled              | BIRDLG_AUTH_ENABLED              | enable token-based authentication (default false)                              |
 | auth_token                | --auth-token                | BIRDLG_AUTH_TOKEN                | authentication token for API access                                            |
