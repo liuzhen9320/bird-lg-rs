@@ -32,7 +32,7 @@ impl RouteAttrs {
         self.attrs.is_empty()
     }
 
-    pub fn iter(&self) -> std::collections::hash_map::Iter<String, String> {
+    pub fn iter(&self) -> std::collections::hash_map::Iter<'_, String, String> {
         self.attrs.iter()
     }
 }
