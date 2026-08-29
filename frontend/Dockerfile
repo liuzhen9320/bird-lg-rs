@@ -34,7 +34,7 @@ RUN apk add --no-cache \
     ca-certificates
 
 # Copy the binary
-COPY --from=builder /app/frontend/target/release/bird-lg-rs /usr/local/bin/bird-lg-rs
+COPY --from=builder /app/target/release/bird-lg-rs /usr/local/bin/bird-lg-rs
 
 # Copy assets
 COPY frontend/assets /app/assets

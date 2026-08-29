@@ -38,7 +38,7 @@ RUN apk add --no-cache \
     traceroute
 
 # Copy the binary
-COPY --from=builder /app/proxy/target/release/bird-lgproxy-rs /usr/local/bin/bird-lgproxy-rs
+COPY --from=builder /app/target/release/bird-lgproxy-rs /usr/local/bin/bird-lgproxy-rs
 
 # Create non-root user
 RUN addgroup -g 1000 -S birdlg && \
