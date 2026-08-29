@@ -67,6 +67,34 @@ impl fmt::Debug for Settings {
 
 static SETTINGS: OnceLock<Settings> = OnceLock::new();
 
+fn parse_server_spec(server_spec: &str) -> Result<(String, String, bool)> {
+    let (display_name, actual, explicit_display) =
+        if let Some((display_name, remainder)) = server_spec.split_once('<') {
+            let actual = remainder.strip_suffix('>').ok_or_else(|| {
+                anyhow::anyhow!("Invalid server specification: {}", server_spec)
+            })?;
+            if display_name.trim().is_empty()
+                || actual.trim().is_empty()
+                || actual.contains('<')
+                || actual.contains('>')
+            {
+                anyhow::bail!("Invalid server specification: {}", server_spec);
+            }
+            (display_name.to_string(), actual.to_string(), true)
+        } else {
+            if server_spec.contains('>') {
+                anyhow::bail!("Invalid server specification: {}", server_spec);
+            }
+            (server_spec.to_string(), server_spec.to_string(), false)
+        };
+
+    if display_name.contains('+') {
+        anyhow::bail!("Server display name cannot contain '+': {}", display_name);
+    }
+
+    Ok((display_name, actual, explicit_display))
+}
+
 impl Settings {
     pub async fn init(args: Args) -> Result<()> {
         let settings = Self::from_args(args)?;
@@ -101,6 +129,7 @@ impl Settings {
         // Parse servers with display names
         let mut servers = Vec::new();
         let mut servers_display = Vec::new();
+        let mut explicit_display_names = Vec::new();
 
         debug!(
             "Initializing settings with args.servers: {:?}",
@@ -110,22 +139,17 @@ impl Settings {
 
         for server_spec in &args.servers {
             debug!("Processing server_spec: '{}'", server_spec);
-            if let Some(angle_pos) = server_spec.find('<') {
-                // Display name format: "Display<actual>"
-                let display_name = server_spec[..angle_pos].to_string();
-                let actual = server_spec[angle_pos + 1..server_spec.len() - 1].to_string();
-                debug!(
-                    "Found <> format: display_name='{}', actual='{}'",
-                    display_name, actual
-                );
-                servers_display.push(display_name);
-                servers.push(actual);
-            } else {
-                // Plain server name - store the original as display name
-                debug!("Plain server name: '{}'", server_spec);
-                servers_display.push(server_spec.clone());
-                servers.push(server_spec.clone());
+            let (display_name, actual, explicit_display) = parse_server_spec(server_spec)?;
+            if servers_display.contains(&display_name) {
+                anyhow::bail!("Duplicate server display name: {}", display_name);
             }
+            debug!(
+                "Parsed server: display_name='{}', actual='{}'",
+                display_name, actual
+            );
+            servers_display.push(display_name);
+            servers.push(actual);
+            explicit_display_names.push(explicit_display);
         }
 
         debug!("Before domain processing - servers: {:?}", servers);
@@ -150,7 +174,9 @@ impl Settings {
                         i, original
                     );
                     // If the server name already contains the domain, remove it from display name
-                    if servers[i].ends_with(&format!(".{}", args.domain)) {
+                    if !explicit_display_names[i]
+                        && servers[i].ends_with(&format!(".{}", args.domain))
+                    {
                         let without_domain = servers[i]
                             .strip_suffix(&format!(".{}", args.domain))
                             .unwrap_or(&servers[i]);
@@ -161,6 +187,12 @@ impl Settings {
                         );
                     }
                 }
+            }
+        }
+
+        for (index, display_name) in servers_display.iter().enumerate() {
+            if servers_display[..index].contains(display_name) {
+                anyhow::bail!("Duplicate server display name: {}", display_name);
             }
         }
 
@@ -252,5 +284,74 @@ impl Settings {
         }
 
         Ok(servers)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use clap::Parser;
+
+    #[test]
+    fn server_specs_require_complete_unambiguous_aliases() {
+        assert_eq!(
+            parse_server_spec("Edge<edge.example>").unwrap(),
+            ("Edge".to_string(), "edge.example".to_string(), true)
+        );
+        assert_eq!(
+            parse_server_spec("edge.example").unwrap(),
+            (
+                "edge.example".to_string(),
+                "edge.example".to_string(),
+                false
+            )
+        );
+
+        for server_spec in [
+            "edge<",
+            "edge<actual",
+            "<actual>",
+            "edge<>",
+            "edge<actual>>",
+            "edge>actual",
+            "edge+other",
+        ] {
+            assert!(
+                parse_server_spec(server_spec).is_err(),
+                "accepted {server_spec:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn explicit_aliases_survive_domain_processing_and_duplicates_fail() {
+        let settings = Settings::from_args(
+            Args::try_parse_from([
+                "bird-lg-rs",
+                "--servers=Display<edge.example>",
+                "--domain=example",
+            ])
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(settings.servers, ["edge.example"]);
+        assert_eq!(settings.servers_display, ["Display"]);
+
+        let error = Settings::from_args(
+            Args::try_parse_from(["bird-lg-rs", "--servers=edge,edge"]).unwrap(),
+        )
+        .unwrap_err();
+        assert_eq!(error.to_string(), "Duplicate server display name: edge");
+
+        let error = Settings::from_args(
+            Args::try_parse_from([
+                "bird-lg-rs",
+                "--servers=edge,edge.example",
+                "--domain=example",
+            ])
+            .unwrap(),
+        )
+        .unwrap_err();
+        assert_eq!(error.to_string(), "Duplicate server display name: edge");
     }
 }
