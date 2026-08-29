@@ -11,9 +11,25 @@ services:
     ports:
       - "5000:5000"
     environment:
-      - BIRDLG_SERVERS=server1,server2
-      - BIRDLG_DOMAIN=example.com
-      - BIRDLG_PROXY_PORT=8000
+      - BIRDLG_SERVERS=Local<bird-lg-proxy>
+      # - BIRDLG_DOMAIN=
+      # - BIRDLG_LISTEN=5000
+      # - BIRDLG_PROXY_PORT=8000
+      # - BIRDLG_WHOIS=whois.verisign-grs.com
+      # - BIRDLG_DNS_INTERFACE=asn.cymru.com
+      # - BIRDLG_BGPMAP_INFO=asn,as-name,ASName,descr
+      # - BIRDLG_TITLE_BRAND=Bird-lg Rust
+      # - BIRDLG_NAVBAR_BRAND=Bird-lg Rust
+      # - BIRDLG_NAVBAR_BRAND_URL=/
+      # - BIRDLG_NAVBAR_ALL_SERVERS=ALL Servers
+      # - BIRDLG_NAVBAR_ALL_URL=all
+      # - BIRDLG_NET_SPECIFIC_MODE=
+      # - BIRDLG_PROTOCOL_FILTER=BGP,Pipe
+      # - BIRDLG_NAME_FILTER=
+      # - BIRDLG_TIMEOUT=120
+      # - BIRDLG_TELEGRAM_BOT_NAME=
+      # - BIRDLG_AUTH_ENABLED=false
+      # - BIRDLG_AUTH_TOKEN=change-me
     depends_on:
       - bird-lg-proxy
 
@@ -26,8 +42,20 @@ services:
         SERVICE: proxy
     ports:
       - "8000:8000"
-    environment:
-      - BIRD_SOCKET=/var/run/bird/bird.ctl
-      - BIRDLG_PROXY_PORT=8000
+    # environment:
+      # - ALLOWED_IPS=192.0.2.0/24,2001:db8::/32
+      # - BIRD_SOCKET=/var/run/bird/bird.ctl
+      # - BIRDLG_BIRD_TIMEOUT=10
+      # - BIRDLG_BIRD_MAX_RESPONSE_BYTES=1048576
+      # - BIRDLG_PROXY_PORT=8000
+      # - BIRDLG_TRACEROUTE_BIN=/usr/bin/traceroute
+      # - BIRDLG_TRACEROUTE_FLAGS=-q1 -N32 -w1
+      # - BIRDLG_TRACEROUTE_RAW=false
+      # - BIRDLG_TRACEROUTE_MAX_CONCURRENT=10
+      # - BIRDLG_TRACEROUTE_TIMEOUT=120
+      # - BIRDLG_TRACEROUTE_MAX_OUTPUT_BYTES=1048576
+      # - BIRDLG_BIRD_RESTRICT_CMDS=true
+      # - BIRDLG_AUTH_ENABLED=false
+      # - BIRDLG_AUTH_TOKEN=change-me
     volumes:
-      - /var/run/bird/bird.ctl:/var/run/bird/bird.ctl:ro 
+      - /var/run/bird/bird.ctl:/var/run/bird/bird.ctl:ro
