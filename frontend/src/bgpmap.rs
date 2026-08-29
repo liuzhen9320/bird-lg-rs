@@ -129,8 +129,7 @@ impl RouteGraph {
     }
 
     fn escape_string(s: &str) -> String {
-        s
-            .replace("\\", "\\\\")
+        s.replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\n", "\\n")
             .replace("\r", "\\r")

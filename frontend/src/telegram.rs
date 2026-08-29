@@ -34,12 +34,11 @@ fn telegram_is_command(message: &str, command: &str) -> bool {
     let settings = Settings::global();
     let bot_name = &settings.telegram_bot_name;
 
-    if !bot_name.is_empty() {
-        if message.starts_with(&format!("/{}@{} ", command, bot_name))
-            || message == format!("/{}@{}", command, bot_name)
-        {
-            return true;
-        }
+    if !bot_name.is_empty()
+        && (message.starts_with(&format!("/{}@{} ", command, bot_name))
+            || message == format!("/{}@{}", command, bot_name))
+    {
+        return true;
     }
 
     message.starts_with(&format!("/{} ", command)) || message == format!("/{}", command)
@@ -166,8 +165,8 @@ fn shorten_whois_filter(result: &str) -> String {
 pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
     // Extract the path to get servers list
     let path = request.uri().path().to_string();
-    let servers_path = if path.starts_with("/telegram/") {
-        &path[10..] // Remove "/telegram/" prefix
+    let servers_path = if let Some(servers) = path.strip_prefix("/telegram/") {
+        servers
     } else {
         ""
     };

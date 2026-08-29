@@ -206,11 +206,7 @@ mod tests {
         }
     }
 
-    async fn serve_bird_response(
-        listener: UnixListener,
-        restrict_cmds: bool,
-        response: Vec<u8>,
-    ) {
+    async fn serve_bird_response(listener: UnixListener, restrict_cmds: bool, response: Vec<u8>) {
         let (stream, _) = listener.accept().await.unwrap();
         let mut reader = BufReader::new(stream);
         reader

@@ -3,15 +3,13 @@ use axum::{
     extract::{ConnectInfo, Request},
     http::{header::AUTHORIZATION, HeaderMap, StatusCode},
     middleware::Next,
-    response::{IntoResponse, Response},
+    response::Response,
 };
 use std::net::SocketAddr;
 use subtle::ConstantTimeEq;
 use tracing::debug;
 
-fn unauthorized_response() -> Response {
-    (StatusCode::UNAUTHORIZED, "401 Unauthorized\n").into_response()
-}
+pub(crate) type AccessError = (StatusCode, &'static str);
 
 fn constant_time_token_eq(provided: &str, expected: &str) -> bool {
     bool::from(provided.as_bytes().ct_eq(expected.as_bytes()))
@@ -29,7 +27,7 @@ fn authorize(headers: &HeaderMap, expected_token: Option<&str>) -> Result<(), St
     }
 }
 
-pub async fn access_control(request: Request, next: Next) -> Result<Response, Response> {
+pub async fn access_control(request: Request, next: Next) -> Result<Response, AccessError> {
     let settings = Settings::global();
 
     // Check IP access control (TCP connections only; Unix sockets are local)
@@ -37,7 +35,7 @@ pub async fn access_control(request: Request, next: Next) -> Result<Response, Re
         let remote_ip = addr.ip();
         debug!("Request IP: {}", remote_ip);
         if !settings.has_access(remote_ip) {
-            return Err((StatusCode::FORBIDDEN, "403 Forbidden\n").into_response());
+            return Err((StatusCode::FORBIDDEN, "403 Forbidden\n"));
         }
     }
 
@@ -46,7 +44,7 @@ pub async fn access_control(request: Request, next: Next) -> Result<Response, Re
         && authorize(request.headers(), settings.auth_token.as_deref()).is_err()
     {
         debug!("Authentication failed");
-        return Err(unauthorized_response());
+        return Err((StatusCode::UNAUTHORIZED, "401 Unauthorized\n"));
     }
 
     Ok(next.run(request).await)

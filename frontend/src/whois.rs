@@ -149,9 +149,15 @@ mod tests {
             "example.net\r\n",
             "example.net\0",
         ] {
-            assert!(validate_whois_target(target).is_err(), "accepted {target:?}");
+            assert!(
+                validate_whois_target(target).is_err(),
+                "accepted {target:?}"
+            );
         }
-        assert_eq!(validate_whois_target(" example.net ").unwrap(), "example.net");
+        assert_eq!(
+            validate_whois_target(" example.net ").unwrap(),
+            "example.net"
+        );
     }
 
     #[tokio::test]

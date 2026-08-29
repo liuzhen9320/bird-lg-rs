@@ -1,10 +1,4 @@
-use axum::{
-    extract::Query,
-    http::StatusCode,
-    response::{IntoResponse, Response},
-    routing::get,
-    Router,
-};
+use axum::{extract::Query, http::StatusCode, response::IntoResponse, routing::get, Router};
 use clap::Parser;
 use serde::Deserialize;
 use std::net::SocketAddr;
@@ -35,6 +29,7 @@ use settings::Settings;
 const BIRD_QUERY_REQUIRED_MESSAGE: &str = "Query parameter 'q' is required";
 const BIRD_QUERY_NOT_ALLOWED_MESSAGE: &str =
     "Query not allowed. Only 'show protocols' and 'show route' commands are permitted.";
+type ProxyError = (StatusCode, String);
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -155,16 +150,16 @@ async fn invalid_handler() -> impl IntoResponse {
 }
 
 // Handles BIRD queries
-async fn bird_handler(Query(params): Query<BirdQuery>) -> Result<impl IntoResponse, Response> {
+async fn bird_handler(Query(params): Query<BirdQuery>) -> Result<impl IntoResponse, ProxyError> {
     let settings = Settings::global();
     let query = prepare_bird_query(&params.q, settings.bird_restrict_cmds)
-        .map_err(|(status, message)| (status, message).into_response())?;
+        .map_err(|(status, message)| (status, message.to_string()))?;
 
     match bird::execute_bird_command(&query).await {
         Ok(output) => Ok(output),
         Err(e) => {
             warn!("Bird command failed: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
+            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
         }
     }
 }
@@ -172,16 +167,19 @@ async fn bird_handler(Query(params): Query<BirdQuery>) -> Result<impl IntoRespon
 // Handles traceroute queries
 async fn traceroute_handler(
     Query(params): Query<TracerouteQuery>,
-) -> Result<impl IntoResponse, Response> {
+) -> Result<impl IntoResponse, ProxyError> {
     if params.q.trim().is_empty() {
-        return Err((StatusCode::BAD_REQUEST, "Query parameter 'q' is required").into_response());
+        return Err((
+            StatusCode::BAD_REQUEST,
+            "Query parameter 'q' is required".to_string(),
+        ));
     }
 
     match traceroute::execute_traceroute(&params.q).await {
         Ok(output) => Ok(output),
         Err(e) => {
             warn!("Traceroute command failed: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()).into_response())
+            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
         }
     }
 }

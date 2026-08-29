@@ -70,9 +70,9 @@ static SETTINGS: OnceLock<Settings> = OnceLock::new();
 fn parse_server_spec(server_spec: &str) -> Result<(String, String, bool)> {
     let (display_name, actual, explicit_display) =
         if let Some((display_name, remainder)) = server_spec.split_once('<') {
-            let actual = remainder.strip_suffix('>').ok_or_else(|| {
-                anyhow::anyhow!("Invalid server specification: {}", server_spec)
-            })?;
+            let actual = remainder
+                .strip_suffix('>')
+                .ok_or_else(|| anyhow::anyhow!("Invalid server specification: {}", server_spec))?;
             if display_name.trim().is_empty()
                 || actual.trim().is_empty()
                 || actual.contains('<')
@@ -122,7 +122,11 @@ impl Settings {
             None
         } else {
             Some(Regex::new(&args.name_filter).map_err(|error| {
-                anyhow::anyhow!("Invalid name filter regex '{}': {}", args.name_filter, error)
+                anyhow::anyhow!(
+                    "Invalid name filter regex '{}': {}",
+                    args.name_filter,
+                    error
+                )
             })?)
         };
 
