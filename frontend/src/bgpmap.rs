@@ -476,24 +476,18 @@ mod tests {
     #[test]
     fn test_bird_route_to_graph_xss() {
         let fake_result = r#"<script>alert("evil!")</script>"#;
-        let result = bird_route_to_graphviz(
+        let dot = bird_route_to_graphviz(
             &[String::from("alpha")],
             &[fake_result.to_string()],
             fake_result,
         );
 
-        // Decode the base64 result to check for XSS
-        let decoded = String::from_utf8(
-            general_purpose::STANDARD
-                .decode(result)
-                .expect("Failed to decode base64"),
-        )
-        .expect("Failed to convert to string");
         assert!(
-            !decoded.contains(fake_result),
+            !dot.contains(fake_result),
             "XSS injection succeeded: {}",
-            decoded
+            dot
         );
+        assert!(dot.contains(r#"<script>alert(\"evil!\")</script>"#));
     }
 
     #[test]
