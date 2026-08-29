@@ -274,6 +274,24 @@ pub async fn init() {
         .expect("Config already initialized");
 }
 
+fn validate_target(query: &str) -> Result<&str> {
+    let target = query.trim();
+    if target.is_empty() {
+        bail!("Invalid target: query is empty");
+    }
+    if target.starts_with('-') {
+        bail!("Invalid target: command options are not allowed");
+    }
+    if target
+        .chars()
+        .any(|character| character.is_whitespace() || character.is_control())
+    {
+        bail!("Invalid target: whitespace and control characters are not allowed");
+    }
+
+    Ok(target)
+}
+
 /// Execute traceroute command
 pub async fn execute_traceroute(query: &str) -> Result<String> {
     let settings = Settings::global();
@@ -288,15 +306,7 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         .get()
         .ok_or_else(|| anyhow!("Traceroute semaphore not initialized"))?;
 
-    let trimmed_query = query.trim();
-    if trimmed_query.is_empty() {
-        return Err(anyhow!("Invalid target: query is empty"));
-    }
-    if trimmed_query.contains(' ') {
-        return Err(anyhow!(
-            "Invalid target: contains spaces (parameter injection not allowed)"
-        ));
-    }
+    let target = validate_target(query)?;
 
     let timeout_duration = Duration::from_secs(settings.traceroute_timeout);
     let deadline = Instant::now() + timeout_duration;
@@ -310,7 +320,7 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         })?
         .map_err(|e| anyhow!("Failed to acquire traceroute semaphore: {}", e))?;
 
-    let target = vec![trimmed_query.to_string()];
+    let target = vec![target.to_string()];
     let output = run_command_until(
         &config.bin,
         &config.flags,
@@ -378,6 +388,16 @@ mod tests {
         fn drop(&mut self) {
             let _ = std::fs::remove_file(&self.0);
         }
+    }
+
+    #[test]
+    fn traceroute_target_rejects_command_options_and_whitespace() {
+        for target in ["-m100", "--help", "host name", "host\tname", "host\nname"] {
+            assert!(validate_target(target).is_err(), "accepted {target:?}");
+        }
+
+        assert_eq!(validate_target(" example.net ").unwrap(), "example.net");
+        assert_eq!(validate_target("2001:db8::1").unwrap(), "2001:db8::1");
     }
 
     #[tokio::test]
