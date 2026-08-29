@@ -1,5 +1,18 @@
+.rust-lint: &rust-lint
+  name: lint
+  docker:
+    image: rust:1.98.0-bookworm
+  stages:
+    - name: rustfmt
+      script: cargo fmt --all -- --check
+    - name: clippy
+      script: cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 $:
+  push:
+    - *rust-lint
+  pull_request:
+    - *rust-lint
   vscode:
     - docker:
         image: cnbcool/default-dev-env:latest
