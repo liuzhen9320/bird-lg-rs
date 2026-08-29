@@ -125,13 +125,16 @@ impl RouteGraph {
 
     fn escape(&self, s: &str) -> String {
         // Escape special characters for Graphviz DOT syntax
-        let escaped = s
+        format!("\"{}\"", Self::escape_string(s))
+    }
+
+    fn escape_string(s: &str) -> String {
+        s
             .replace("\\", "\\\\")
             .replace("\"", "\\\"")
             .replace("\n", "\\n")
             .replace("\r", "\\r")
-            .replace("\t", "\\t");
-        format!("\"{}\"", escaped)
+            .replace("\t", "\\t")
     }
 
     fn attrs_to_string(&self, attrs: &RouteAttrs) -> String {
@@ -142,8 +145,8 @@ impl RouteGraph {
         let attr_strings: Vec<String> = attrs
             .iter()
             .map(|(k, v)| {
-                let escaped_k = k.replace("\"", "\\\"");
-                let escaped_v = v.replace("\"", "\\\"").replace("\n", "\\n");
+                let escaped_k = Self::escape_string(k);
+                let escaped_v = Self::escape_string(v);
                 format!("{}=\"{}\"", escaped_k, escaped_v)
             })
             .collect();
@@ -184,7 +187,7 @@ impl RouteGraph {
         for (key, edge) in &self.edges {
             let mut attrs_copy = edge.attrs.clone();
             if !edge.label.is_empty() {
-                attrs_copy.insert("label".to_string(), edge.label.join("\\n"));
+                attrs_copy.insert("label".to_string(), edge.label.join("\n"));
             }
 
             let attrs_str = self.attrs_to_string(&attrs_copy);
@@ -488,6 +491,21 @@ mod tests {
             dot
         );
         assert!(dot.contains(r#"<script>alert(\"evil!\")</script>"#));
+    }
+
+    #[test]
+    fn test_graphviz_attribute_escaping_handles_backslash_before_quote() {
+        let graph = RouteGraph::new();
+        let mut attrs = RouteAttrs::new();
+        attrs.insert(
+            "label".to_string(),
+            r#"target\",URL="javascript:alert(1)"#.to_string(),
+        );
+
+        assert_eq!(
+            graph.attrs_to_string(&attrs),
+            r#"[label="target\\\",URL=\"javascript:alert(1)"]"#
+        );
     }
 
     #[test]
