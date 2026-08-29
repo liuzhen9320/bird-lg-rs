@@ -181,7 +181,9 @@ pub async fn traceroute(
     Path((servers, target)): Path<(String, String)>,
 ) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
-    let server_list = settings.resolve_servers_from_display_names(&servers);
+    let server_list = settings
+        .resolve_servers_from_display_names(&servers)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()).into_response())?;
 
     if server_list.len() > settings.servers.len() {
         return Err((
@@ -259,7 +261,9 @@ async fn handle_bird_command(
     command: String,
 ) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
-    let server_list = settings.resolve_servers_from_display_names(&servers);
+    let server_list = settings
+        .resolve_servers_from_display_names(&servers)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()).into_response())?;
 
     if server_list.len() > settings.servers.len() {
         return Err((
@@ -318,7 +322,9 @@ async fn handle_bgpmap_command(
     target: String,
 ) -> Result<impl IntoResponse, Response> {
     let settings = Settings::global();
-    let server_list = settings.resolve_servers_from_display_names(&servers);
+    let server_list = settings
+        .resolve_servers_from_display_names(&servers)
+        .map_err(|error| (StatusCode::BAD_REQUEST, error.to_string()).into_response())?;
 
     if server_list.len() > settings.servers.len() {
         return Err((

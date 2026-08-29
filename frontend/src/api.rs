@@ -8,7 +8,18 @@ use serde_json::json;
 
 pub async fn bird_api(Path((servers, command)): Path<(String, String)>) -> impl IntoResponse {
     let settings = Settings::global();
-    let server_list = settings.resolve_servers_from_display_names(&servers);
+    let server_list = match settings.resolve_servers_from_display_names(&servers) {
+        Ok(servers) => servers,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": error.to_string()
+                })),
+            )
+                .into_response();
+        }
+    };
 
     // Validate request before processing
     if server_list.len() > settings.servers.len() {
@@ -65,7 +76,18 @@ pub async fn bird_api(Path((servers, command)): Path<(String, String)>) -> impl 
 
 pub async fn traceroute_api(Path((servers, target)): Path<(String, String)>) -> impl IntoResponse {
     let settings = Settings::global();
-    let server_list = settings.resolve_servers_from_display_names(&servers);
+    let server_list = match settings.resolve_servers_from_display_names(&servers) {
+        Ok(servers) => servers,
+        Err(error) => {
+            return (
+                StatusCode::BAD_REQUEST,
+                Json(json!({
+                    "error": error.to_string()
+                })),
+            )
+                .into_response();
+        }
+    };
 
     // Validate request before processing
     if server_list.len() > settings.servers.len() {

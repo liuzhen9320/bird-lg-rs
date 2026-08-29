@@ -225,22 +225,32 @@ impl Settings {
         None
     }
 
-    pub fn resolve_servers_from_display_names(&self, display_names: &str) -> Vec<String> {
-        display_names
+    pub fn resolve_servers_from_display_names(&self, display_names: &str) -> Result<Vec<String>> {
+        if display_names.is_empty() {
+            anyhow::bail!("No servers specified");
+        }
+
+        let servers = display_names
             .split('+')
-            .filter_map(|display_name| {
+            .map(|display_name| {
                 // First try to find by display name
                 if let Some(server) = self.get_server_from_display_name(display_name) {
-                    Some(server)
+                    Ok(server)
                 } else {
                     // If not found by display name, check if it's already a server name
-                    if self.servers.contains(&display_name.to_string()) {
-                        Some(display_name.to_string())
+                    if self.servers.iter().any(|server| server == display_name) {
+                        Ok(display_name.to_string())
                     } else {
-                        None
+                        anyhow::bail!("Unknown server: {}", display_name)
                     }
                 }
             })
-            .collect()
+            .collect::<Result<Vec<_>>>()?;
+
+        if servers.is_empty() {
+            anyhow::bail!("No servers specified");
+        }
+
+        Ok(servers)
     }
 }

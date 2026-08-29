@@ -206,7 +206,7 @@ pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
 
     // Select servers based on webhook URL
     let servers = if servers_path.is_empty() {
-        settings.servers.clone()
+        Ok(settings.servers.clone())
     } else {
         settings.resolve_servers_from_display_names(servers_path)
     };
@@ -224,31 +224,43 @@ pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
     };
 
     // Execute command
-    let command_result = if telegram_is_command(&text, "trace") {
-        telegram_batch_request_format(
-            &servers,
-            "traceroute",
-            &target,
-            telegram_default_post_process,
-        )
-        .await
-    } else if telegram_is_command(&text, "route") {
-        let command = format!("show route for {} primary", target);
-        telegram_batch_request_format(&servers, "bird", &command, telegram_default_post_process)
-            .await
-    } else if telegram_is_command(&text, "path") {
-        let command = format!("show route for {} all primary", target);
-        telegram_batch_request_format(&servers, "bird", &command, |result| extract_as_path(result))
-            .await
-    } else if telegram_is_command(&text, "whois") {
-        match process_whois_command(&target).await {
-            Ok(result) => result,
-            Err(e) => format!("Error: {}", e),
+    let command_result = match servers {
+        Err(error) => format!("Error: {}", error),
+        Ok(servers) => {
+            if telegram_is_command(&text, "trace") {
+                telegram_batch_request_format(
+                    &servers,
+                    "traceroute",
+                    &target,
+                    telegram_default_post_process,
+                )
+                .await
+            } else if telegram_is_command(&text, "route") {
+                let command = format!("show route for {} primary", target);
+                telegram_batch_request_format(
+                    &servers,
+                    "bird",
+                    &command,
+                    telegram_default_post_process,
+                )
+                .await
+            } else if telegram_is_command(&text, "path") {
+                let command = format!("show route for {} all primary", target);
+                telegram_batch_request_format(&servers, "bird", &command, |result| {
+                    extract_as_path(result)
+                })
+                .await
+            } else if telegram_is_command(&text, "whois") {
+                match process_whois_command(&target).await {
+                    Ok(result) => result,
+                    Err(e) => format!("Error: {}", e),
+                }
+            } else if telegram_is_command(&text, "help") {
+                "/path <IP>\n/route <IP>\n/trace <IP>\n/whois <Target>".to_string()
+            } else {
+                return StatusCode::OK.into_response();
+            }
         }
-    } else if telegram_is_command(&text, "help") {
-        "/path <IP>\n/route <IP>\n/trace <IP>\n/whois <Target>".to_string()
-    } else {
-        return StatusCode::OK.into_response();
     };
 
     let command_result = command_result.trim();
