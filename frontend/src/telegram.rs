@@ -49,6 +49,13 @@ fn telegram_default_post_process(s: &str) -> String {
     s.trim().to_string()
 }
 
+fn truncate_chars(value: &str, max_chars: usize) -> &str {
+    value
+        .char_indices()
+        .nth(max_chars)
+        .map_or(value, |(index, _)| &value[..index])
+}
+
 async fn telegram_batch_request_format(
     servers: &[String],
     endpoint: &str,
@@ -270,12 +277,8 @@ pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
         command_result
     };
 
-    // Limit response length to Telegram's maximum
-    let command_result = if command_result.len() > 4096 {
-        &command_result[..4096]
-    } else {
-        command_result
-    };
+    // Reserve space for the Markdown code fence within Telegram's 4096-character limit.
+    let command_result = truncate_chars(command_result, 4096 - "```\n\n```".chars().count());
 
     // Create JSON response
     let response = TgWebhookResponse {
@@ -293,5 +296,20 @@ pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
             "Failed to serialize response",
         )
             .into_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn telegram_truncation_preserves_utf8_boundaries() {
+        assert_eq!(truncate_chars("ab界cd", 3), "ab界");
+
+        let response = "界".repeat(5_000);
+        let truncated = truncate_chars(&response, 4_088);
+        assert_eq!(truncated.chars().count(), 4_088);
+        assert!(truncated.is_char_boundary(truncated.len()));
     }
 }
