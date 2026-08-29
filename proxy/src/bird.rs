@@ -111,6 +111,7 @@ async fn connect_to_bird(socket_path: &str) -> Result<UnixStream> {
 async fn execute_bird_exchange(
     socket_path: &str,
     query: &str,
+    restrict_cmds: bool,
     max_response_bytes: usize,
 ) -> Result<String> {
     let stream = connect_to_bird(socket_path).await?;
@@ -119,14 +120,16 @@ async fn execute_bird_exchange(
     let mut greeting = Vec::new();
     bird_read_line(&mut reader, &mut greeting, max_response_bytes).await?;
 
-    bird_write_line(reader.get_mut(), "restrict").await?;
+    if restrict_cmds {
+        bird_write_line(reader.get_mut(), "restrict").await?;
 
-    let mut restrict_output = Vec::new();
-    bird_read_line(&mut reader, &mut restrict_output, max_response_bytes).await?;
+        let mut restrict_output = Vec::new();
+        bird_read_line(&mut reader, &mut restrict_output, max_response_bytes).await?;
 
-    let restrict_response = String::from_utf8_lossy(&restrict_output);
-    if !restrict_response.contains("Access restricted") {
-        bail!("Could not verify that bird access was restricted");
+        let restrict_response = String::from_utf8_lossy(&restrict_output);
+        if !restrict_response.contains("Access restricted") {
+            bail!("Could not verify that bird access was restricted");
+        }
     }
 
     bird_write_line(reader.get_mut(), query).await?;
@@ -142,12 +145,13 @@ async fn execute_bird_exchange(
 async fn execute_bird_command_with_limits(
     socket_path: &str,
     query: &str,
+    restrict_cmds: bool,
     execution_timeout: Duration,
     max_response_bytes: usize,
 ) -> Result<String> {
     timeout(
         execution_timeout,
-        execute_bird_exchange(socket_path, query, max_response_bytes),
+        execute_bird_exchange(socket_path, query, restrict_cmds, max_response_bytes),
     )
     .await
     .map_err(|_| {
@@ -164,6 +168,7 @@ pub async fn execute_bird_command(query: &str) -> Result<String> {
     execute_bird_command_with_limits(
         &settings.bird_socket,
         query,
+        settings.bird_restrict_cmds,
         Duration::from_secs(settings.bird_timeout),
         settings.bird_max_response_bytes,
     )
@@ -201,7 +206,11 @@ mod tests {
         }
     }
 
-    async fn serve_bird_response(listener: UnixListener, response: Vec<u8>) {
+    async fn serve_bird_response(
+        listener: UnixListener,
+        restrict_cmds: bool,
+        response: Vec<u8>,
+    ) {
         let (stream, _) = listener.accept().await.unwrap();
         let mut reader = BufReader::new(stream);
         reader
@@ -211,15 +220,17 @@ mod tests {
             .unwrap();
 
         let mut command = String::new();
-        reader.read_line(&mut command).await.unwrap();
-        assert_eq!(command, "restrict\n");
-        reader
-            .get_mut()
-            .write_all(b"0001 Access restricted\n")
-            .await
-            .unwrap();
+        if restrict_cmds {
+            reader.read_line(&mut command).await.unwrap();
+            assert_eq!(command, "restrict\n");
+            reader
+                .get_mut()
+                .write_all(b"0001 Access restricted\n")
+                .await
+                .unwrap();
+            command.clear();
+        }
 
-        command.clear();
         reader.read_line(&mut command).await.unwrap();
         assert_eq!(command, "show route\n");
         reader.get_mut().write_all(&response).await.unwrap();
@@ -231,12 +242,14 @@ mod tests {
         let listener = UnixListener::bind(&socket.0).unwrap();
         let server = tokio::spawn(serve_bird_response(
             listener,
+            true,
             b"0000 route result\n".to_vec(),
         ));
 
         let output = execute_bird_command_with_limits(
             socket.0.to_str().unwrap(),
             "show route",
+            true,
             Duration::from_secs(1),
             64,
         )
@@ -252,11 +265,12 @@ mod tests {
         let socket = SocketPath::new("oversized");
         let listener = UnixListener::bind(&socket.0).unwrap();
         let response = format!("1000 {}\n", "x".repeat(128)).into_bytes();
-        let server = tokio::spawn(serve_bird_response(listener, response));
+        let server = tokio::spawn(serve_bird_response(listener, true, response));
 
         let error = execute_bird_command_with_limits(
             socket.0.to_str().unwrap(),
             "show route",
+            true,
             Duration::from_secs(1),
             64,
         )
@@ -279,6 +293,7 @@ mod tests {
         let error = execute_bird_command_with_limits(
             socket.0.to_str().unwrap(),
             "show route",
+            true,
             Duration::from_millis(20),
             64,
         )
@@ -287,5 +302,29 @@ mod tests {
 
         assert_eq!(error.to_string(), "BIRD command timed out after 0 seconds");
         server.abort();
+    }
+
+    #[tokio::test]
+    async fn skips_restrict_exchange_when_disabled() {
+        let socket = SocketPath::new("unrestricted");
+        let listener = UnixListener::bind(&socket.0).unwrap();
+        let server = tokio::spawn(serve_bird_response(
+            listener,
+            false,
+            b"0000 route result\n".to_vec(),
+        ));
+
+        let output = execute_bird_command_with_limits(
+            socket.0.to_str().unwrap(),
+            "show route",
+            false,
+            Duration::from_secs(1),
+            64,
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(output, "route result\n");
+        server.await.unwrap();
     }
 }
