@@ -1,5 +1,6 @@
 use crate::Args;
 use anyhow::Result;
+use regex::Regex;
 use std::fmt;
 use std::sync::OnceLock;
 use tracing::{debug, info};
@@ -27,10 +28,8 @@ pub struct Settings {
     pub bgpmap_info: String,
     #[allow(dead_code)]
     pub telegram_bot_name: String,
-    #[allow(dead_code)]
     pub protocol_filter: Vec<String>,
-    #[allow(dead_code)]
-    pub name_filter: String,
+    pub name_filter: Option<Regex>,
     pub timeout: u64,
     pub auth_enabled: bool,
     pub auth_token: Option<String>,
@@ -90,6 +89,14 @@ impl Settings {
         {
             anyhow::bail!("Authentication token is required when authentication is enabled");
         }
+
+        let name_filter = if args.name_filter.is_empty() {
+            None
+        } else {
+            Some(Regex::new(&args.name_filter).map_err(|error| {
+                anyhow::anyhow!("Invalid name filter regex '{}': {}", args.name_filter, error)
+            })?)
+        };
 
         // Parse servers with display names
         let mut servers = Vec::new();
@@ -180,7 +187,7 @@ impl Settings {
             bgpmap_info: args.bgpmap_info,
             telegram_bot_name: args.telegram_bot_name,
             protocol_filter: args.protocol_filter.unwrap_or_default(),
-            name_filter: args.name_filter,
+            name_filter,
             timeout: args.timeout,
             auth_enabled: args.auth_enabled,
             auth_token: args.auth_token,

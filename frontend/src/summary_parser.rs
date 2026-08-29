@@ -13,7 +13,12 @@ fn get_state_map() -> HashMap<&'static str, &'static str> {
     map
 }
 
-pub fn parse_summary(data: &str, server_name: String) -> Result<SummaryContext> {
+pub fn parse_summary(
+    data: &str,
+    server_name: String,
+    protocol_filter: &[String],
+    name_filter: Option<&Regex>,
+) -> Result<SummaryContext> {
     let lines: Vec<&str> = data.trim().split('\n').collect();
 
     if lines.len() <= 1 {
@@ -48,6 +53,15 @@ pub fn parse_summary(data: &str, server_name: String) -> Result<SummaryContext> 
                 .map(|m| m.as_str())
                 .unwrap_or("")
                 .to_string();
+
+            if !protocol_filter.is_empty() && !protocol_filter.iter().any(|item| item == &proto) {
+                continue;
+            }
+
+            if name_filter.is_some_and(|filter| filter.is_match(&name)) {
+                continue;
+            }
+
             let table = captures
                 .get(3)
                 .map(|m| m.as_str())

@@ -466,9 +466,13 @@ fn get_options() -> Vec<(String, String)> {
 
 fn render_bird_result(context: &BirdContext, option: &str) -> anyhow::Result<TrustedHtml> {
     if option == "summary" && context.result.starts_with("Name") {
-        if let Ok(summary_context) =
-            summary_parser::parse_summary(&context.result, context.server_name.clone())
-        {
+        let settings = Settings::global();
+        if let Ok(summary_context) = summary_parser::parse_summary(
+            &context.result,
+            context.server_name.clone(),
+            &settings.protocol_filter,
+            settings.name_filter.as_ref(),
+        ) {
             let summary = templates::render_summary(&summary_context)?;
             return templates::render_bird_with_html(context, &summary);
         }
