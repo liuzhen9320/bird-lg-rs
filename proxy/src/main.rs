@@ -394,6 +394,9 @@ mod tests {
         assert_eq!(settings.bird_max_response_bytes, 65_536);
         assert_eq!(settings.traceroute_timeout, 90);
         assert_eq!(settings.traceroute_max_output_bytes, 131_072);
+        assert!(settings.has_access("192.0.2.1".parse().unwrap()));
+        assert!(settings.has_access("2001:db8::1".parse().unwrap()));
+        assert!(!settings.has_access("2001:db9::1".parse().unwrap()));
         let settings_debug = format!("{:?}", settings);
         assert!(!settings_debug.contains("environment-token"));
         assert!(settings_debug.contains("auth_token: Some(\"[REDACTED]\")"));

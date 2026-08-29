@@ -34,9 +34,9 @@ pub async fn access_control(request: Request, next: Next) -> Result<Response, Re
 
     // Check IP access control (TCP connections only; Unix sockets are local)
     if let Some(ConnectInfo(addr)) = request.extensions().get::<ConnectInfo<SocketAddr>>() {
-        let remote_ip = addr.ip().to_string();
+        let remote_ip = addr.ip();
         debug!("Request IP: {}", remote_ip);
-        if !settings.has_access(&remote_ip) {
+        if !settings.has_access(remote_ip) {
             return Err((StatusCode::FORBIDDEN, "403 Forbidden\n").into_response());
         }
     }

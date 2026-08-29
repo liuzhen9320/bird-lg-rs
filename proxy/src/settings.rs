@@ -128,28 +128,17 @@ impl Settings {
         SETTINGS.get().expect("Settings not initialized")
     }
 
-    pub fn has_access(&self, remote_addr: &str) -> bool {
+    pub fn has_access(&self, remote_ip: IpAddr) -> bool {
         // If no allowed networks are specified, allow all
         if self.allowed_nets.is_empty() {
             debug!("allowed_nets is empty");
             return true;
         }
 
-        // Extract IP from remote address (remove port if present)
-        let ip_str = if let Some(colon_pos) = remote_addr.rfind(':') {
-            let ip_part = &remote_addr[..colon_pos];
-            // Remove brackets around IPv6 addresses
-            ip_part.trim_start_matches('[').trim_end_matches(']')
-        } else {
-            remote_addr
-        };
-
-        if let Ok(ip) = ip_str.parse::<IpAddr>() {
-            for net in &self.allowed_nets {
-                if net.contains(&ip) {
-                    debug!("allowed ip: {}", ip);
-                    return true;
-                }
+        for net in &self.allowed_nets {
+            if net.contains(&remote_ip) {
+                debug!("allowed ip: {}", remote_ip);
+                return true;
             }
         }
 
