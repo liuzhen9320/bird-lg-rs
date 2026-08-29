@@ -1,9 +1,11 @@
 use crate::settings::Settings;
 use anyhow::{anyhow, Result};
 use std::net::{IpAddr, SocketAddr};
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncRead, AsyncReadExt, AsyncWriteExt};
 use tokio::net::TcpStream;
 use tokio::time::{timeout, Duration};
+
+const MAX_RESPONSE_BYTES: usize = 100_000;
 
 // Adds the default whois port (43) if not specified.
 // Handles IPv4, IPv6 (bare and bracketed), and domain names.
@@ -41,8 +43,21 @@ fn add_default_whois_port(server: &str) -> Result<String> {
     Ok(format!("{}:43", server))
 }
 
+fn validate_whois_target(target: &str) -> Result<&str> {
+    if target.chars().any(char::is_control) {
+        return Err(anyhow!("Whois target contains control characters"));
+    }
+    let target = target.trim();
+    if target.is_empty() {
+        return Err(anyhow!("Whois target is empty"));
+    }
+
+    Ok(target)
+}
+
 pub async fn query(target: &str) -> Result<String> {
     let settings = Settings::global();
+    let target = validate_whois_target(target)?;
 
     // Validate and prepare whois server address
     let whois_server = &settings.whois_server;
@@ -71,28 +86,31 @@ pub async fn query(target: &str) -> Result<String> {
     read_result
 }
 
-async fn read_whois_response(stream: TcpStream) -> Result<String> {
-    let reader = BufReader::new(stream);
-    let mut lines = reader.lines();
-    let mut result = String::new();
-
-    while let Some(line) = lines
-        .next_line()
+async fn read_whois_response<R>(stream: R) -> Result<String>
+where
+    R: AsyncRead + Unpin,
+{
+    let mut bytes = Vec::with_capacity(MAX_RESPONSE_BYTES + 1);
+    stream
+        .take((MAX_RESPONSE_BYTES + 1) as u64)
+        .read_to_end(&mut bytes)
         .await
-        .map_err(|e| anyhow!("Failed to read from whois server: {}", e))?
-    {
-        result.push_str(&line);
-        result.push('\n');
+        .map_err(|e| anyhow!("Failed to read from whois server: {}", e))?;
 
-        // Prevent extremely large responses
-        if result.len() > 100_000 {
-            result.push_str("\n[Response truncated - too large]\n");
-            break;
-        }
+    if bytes.is_empty() {
+        return Err(anyhow!("Empty response from whois server"));
     }
 
-    if result.is_empty() {
-        return Err(anyhow!("Empty response from whois server"));
+    let truncated = bytes.len() > MAX_RESPONSE_BYTES;
+    bytes.truncate(MAX_RESPONSE_BYTES);
+    let response = String::from_utf8_lossy(&bytes);
+    let mut result = String::with_capacity(response.len());
+    for line in response.lines() {
+        result.push_str(line);
+        result.push('\n');
+    }
+    if truncated {
+        result.push_str("\n[Response truncated - too large]\n");
     }
 
     Ok(result)
@@ -120,5 +138,28 @@ mod tests {
             add_default_whois_port("whois.example").unwrap(),
             "whois.example:43"
         );
+    }
+
+    #[test]
+    fn whois_targets_reject_protocol_line_injection() {
+        for target in [
+            "",
+            "   ",
+            "example.net\r\nhelp",
+            "example.net\r\n",
+            "example.net\0",
+        ] {
+            assert!(validate_whois_target(target).is_err(), "accepted {target:?}");
+        }
+        assert_eq!(validate_whois_target(" example.net ").unwrap(), "example.net");
+    }
+
+    #[tokio::test]
+    async fn whois_response_limit_applies_to_a_single_long_line() {
+        let response = vec![b'x'; MAX_RESPONSE_BYTES + 1_000];
+        let result = read_whois_response(response.as_slice()).await.unwrap();
+
+        assert!(result.starts_with(&"x".repeat(MAX_RESPONSE_BYTES)));
+        assert!(result.ends_with("[Response truncated - too large]\n"));
     }
 }
