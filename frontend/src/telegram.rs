@@ -165,11 +165,7 @@ fn shorten_whois_filter(result: &str) -> String {
 pub async fn telegram_webhook(request: Request) -> impl IntoResponse {
     // Extract the path to get servers list
     let path = request.uri().path().to_string();
-    let servers_path = if let Some(servers) = path.strip_prefix("/telegram/") {
-        servers
-    } else {
-        ""
-    };
+    let servers_path = path.strip_prefix("/telegram/").unwrap_or_default();
 
     // Parse JSON body with size limit (100KB)
     const MAX_BODY_SIZE: usize = 100 * 1024;

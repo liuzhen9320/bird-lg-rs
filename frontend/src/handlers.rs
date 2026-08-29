@@ -14,7 +14,7 @@ pub(crate) type HandlerError = (StatusCode, String);
 pub(crate) type HandlerResult<T> = Result<T, HandlerError>;
 
 // Redirect to summary page
-pub async fn redirect_to_summary() -> impl IntoResponse {
+pub(crate) async fn redirect_to_summary() -> impl IntoResponse {
     let settings = Settings::global();
     let all_servers = settings.all_servers_display_string();
     tracing::info!("Redirecting to summary page with servers: {}", all_servers);
@@ -24,12 +24,12 @@ pub async fn redirect_to_summary() -> impl IntoResponse {
 }
 
 // Bird summary handler
-pub async fn bird_summary(Path(servers): Path<String>) -> HandlerResult<impl IntoResponse> {
+pub(crate) async fn bird_summary(Path(servers): Path<String>) -> HandlerResult<impl IntoResponse> {
     handle_bird_command(servers, "summary", "show protocols".to_string()).await
 }
 
 // Bird detail handler
-pub async fn bird_detail(
+pub(crate) async fn bird_detail(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show protocols all {}", protocol);
@@ -37,7 +37,7 @@ pub async fn bird_detail(
 }
 
 // Bird route handler
-pub async fn bird_route(
+pub(crate) async fn bird_route(
     Path((servers, route)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route for {}", route);
@@ -45,7 +45,7 @@ pub async fn bird_route(
 }
 
 // Bird route all handler
-pub async fn bird_route_all(
+pub(crate) async fn bird_route_all(
     Path((servers, route)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route for {} all", route);
@@ -53,7 +53,7 @@ pub async fn bird_route_all(
 }
 
 // Bird route where handler
-pub async fn bird_route_where(
+pub(crate) async fn bird_route_where(
     Path((servers, prefix)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where net ~ [ {} ]", prefix);
@@ -61,7 +61,7 @@ pub async fn bird_route_where(
 }
 
 // Bird route where all handler
-pub async fn bird_route_where_all(
+pub(crate) async fn bird_route_where_all(
     Path((servers, prefix)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where net ~ [ {} ] all", prefix);
@@ -69,7 +69,7 @@ pub async fn bird_route_where_all(
 }
 
 // Bird route from protocol handler
-pub async fn bird_route_from_protocol(
+pub(crate) async fn bird_route_from_protocol(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route protocol {}", protocol);
@@ -77,7 +77,7 @@ pub async fn bird_route_from_protocol(
 }
 
 // Bird route from protocol all handler
-pub async fn bird_route_from_protocol_all(
+pub(crate) async fn bird_route_from_protocol_all(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route protocol {} all", protocol);
@@ -85,7 +85,7 @@ pub async fn bird_route_from_protocol_all(
 }
 
 // Bird route from protocol primary handler
-pub async fn bird_route_from_protocol_primary(
+pub(crate) async fn bird_route_from_protocol_primary(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route protocol {} primary", protocol);
@@ -93,7 +93,7 @@ pub async fn bird_route_from_protocol_primary(
 }
 
 // Bird route from protocol all primary handler
-pub async fn bird_route_from_protocol_all_primary(
+pub(crate) async fn bird_route_from_protocol_all_primary(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route protocol {} all primary", protocol);
@@ -101,7 +101,7 @@ pub async fn bird_route_from_protocol_all_primary(
 }
 
 // Bird route filtered from protocol handler
-pub async fn bird_route_filtered_from_protocol(
+pub(crate) async fn bird_route_filtered_from_protocol(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route filtered protocol {}", protocol);
@@ -109,7 +109,7 @@ pub async fn bird_route_filtered_from_protocol(
 }
 
 // Bird route filtered from protocol all handler
-pub async fn bird_route_filtered_from_protocol_all(
+pub(crate) async fn bird_route_filtered_from_protocol_all(
     Path((servers, protocol)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route filtered protocol {} all", protocol);
@@ -117,7 +117,7 @@ pub async fn bird_route_filtered_from_protocol_all(
 }
 
 // Bird route from origin handler
-pub async fn bird_route_from_origin(
+pub(crate) async fn bird_route_from_origin(
     Path((servers, asn)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where bgp_path.last = {}", asn);
@@ -125,7 +125,7 @@ pub async fn bird_route_from_origin(
 }
 
 // Bird route from origin all handler
-pub async fn bird_route_from_origin_all(
+pub(crate) async fn bird_route_from_origin_all(
     Path((servers, asn)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where bgp_path.last = {} all", asn);
@@ -133,7 +133,7 @@ pub async fn bird_route_from_origin_all(
 }
 
 // Bird route from origin primary handler
-pub async fn bird_route_from_origin_primary(
+pub(crate) async fn bird_route_from_origin_primary(
     Path((servers, asn)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where bgp_path.last = {} primary", asn);
@@ -141,7 +141,7 @@ pub async fn bird_route_from_origin_primary(
 }
 
 // Bird route from origin all primary handler
-pub async fn bird_route_from_origin_all_primary(
+pub(crate) async fn bird_route_from_origin_all_primary(
     Path((servers, asn)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where bgp_path.last = {} all primary", asn);
@@ -149,7 +149,7 @@ pub async fn bird_route_from_origin_all_primary(
 }
 
 // Bird generic command handler
-pub async fn bird_generic(
+pub(crate) async fn bird_generic(
     Path((servers, command)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show {}", command);
@@ -157,7 +157,7 @@ pub async fn bird_generic(
 }
 
 // Bird route generic handler
-pub async fn bird_route_generic(
+pub(crate) async fn bird_route_generic(
     Path((servers, command)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route {}", command);
@@ -165,14 +165,14 @@ pub async fn bird_route_generic(
 }
 
 // BGP Map handlers
-pub async fn bird_route_bgpmap(
+pub(crate) async fn bird_route_bgpmap(
     Path((servers, route)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route for {} all", route);
     handle_bgpmap_command(servers, command, route).await
 }
 
-pub async fn bird_route_where_bgpmap(
+pub(crate) async fn bird_route_where_bgpmap(
     Path((servers, prefix)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let command = format!("show route where net ~ [ {} ] all", prefix);
@@ -180,7 +180,7 @@ pub async fn bird_route_where_bgpmap(
 }
 
 // Traceroute handler
-pub async fn traceroute(
+pub(crate) async fn traceroute(
     Path((servers, target)): Path<(String, String)>,
 ) -> HandlerResult<impl IntoResponse> {
     let settings = Settings::global();
@@ -236,7 +236,7 @@ pub async fn traceroute(
 }
 
 // Whois handler
-pub async fn whois(Path(target): Path<String>) -> HandlerResult<impl IntoResponse> {
+pub(crate) async fn whois(Path(target): Path<String>) -> HandlerResult<impl IntoResponse> {
     let content = match whois::query(&target).await {
         Ok(result) => {
             let whois_context = WhoisContext {

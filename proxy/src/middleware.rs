@@ -27,7 +27,7 @@ fn authorize(headers: &HeaderMap, expected_token: Option<&str>) -> Result<(), St
     }
 }
 
-pub async fn access_control(request: Request, next: Next) -> Result<Response, AccessError> {
+pub(crate) async fn access_control(request: Request, next: Next) -> Result<Response, AccessError> {
     let settings = Settings::global();
 
     // Check IP access control (TCP connections only; Unix sockets are local)
