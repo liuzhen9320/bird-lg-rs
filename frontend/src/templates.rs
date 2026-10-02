@@ -1,3 +1,4 @@
+use crate::{formatter, queries::Query};
 use anyhow::{anyhow, Result};
 use rust_embed::RustEmbed;
 use serde::Serialize;
@@ -19,15 +20,19 @@ pub struct PageContext {
     pub title: String,
     pub brand: String,
     pub brand_url: String,
-    pub all_server_title: String,
-    pub all_servers_url: String,
-    pub all_servers_link_active: bool,
-    pub servers: Vec<String>,
-    pub servers_display: Vec<String>,
+    pub all_servers: NavigationLink,
+    pub servers: Vec<NavigationLink>,
     pub url_option: String,
     pub url_server: String,
     pub url_command: String,
-    pub options: Vec<(String, String)>,
+    pub options: &'static [Query],
+}
+
+#[derive(Serialize)]
+pub struct NavigationLink {
+    pub label: String,
+    pub href: String,
+    pub active: bool,
 }
 
 #[derive(Serialize)]
@@ -72,6 +77,7 @@ pub struct SummaryContext {
 
 #[derive(Serialize)]
 pub struct SummaryRowData {
+    pub detail_url: String,
     pub name: String,
     pub proto: String,
     pub table: String,
@@ -104,6 +110,12 @@ pub fn get_templates() -> &'static Tera {
     TEMPLATES.get().expect("Templates not initialized")
 }
 
+#[cfg(test)]
+pub fn init_for_test() {
+    static INIT: std::sync::Once = std::sync::Once::new();
+    INIT.call_once(|| init().unwrap());
+}
+
 fn render_trusted(template: &str, context: &Context) -> Result<TrustedHtml> {
     let tera = get_templates();
     Ok(TrustedHtml(tera.render(template, context)?))
@@ -119,6 +131,11 @@ pub fn render_page(context: &PageContext, content: &[TrustedHtml]) -> Result<Str
 }
 
 pub fn render_bird(context: &BirdContext) -> Result<TrustedHtml> {
+    let result = render_formatted_result(&context.result)?;
+    render_bird_with_html(context, &result)
+}
+
+pub fn render_bird_plain(context: &BirdContext) -> Result<TrustedHtml> {
     render_trusted("bird.html", &Context::from_serialize(context)?)
 }
 
@@ -129,7 +146,16 @@ pub fn render_bird_with_html(context: &BirdContext, result: &TrustedHtml) -> Res
 }
 
 pub fn render_whois(context: &WhoisContext) -> Result<TrustedHtml> {
-    render_trusted("whois.html", &Context::from_serialize(context)?)
+    let result = render_formatted_result(&context.result)?;
+    let mut context = Context::from_serialize(context)?;
+    context.insert("trusted_result", result.as_str());
+    render_trusted("whois.html", &context)
+}
+
+fn render_formatted_result(result: &str) -> Result<TrustedHtml> {
+    let mut context = Context::new();
+    context.insert("parts", &formatter::format_result(result)?);
+    render_trusted("formatted_result.html", &context)
 }
 
 pub fn render_bgpmap(context: &BgpmapContext) -> Result<TrustedHtml> {

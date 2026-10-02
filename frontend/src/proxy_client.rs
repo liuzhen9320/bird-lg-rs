@@ -51,13 +51,7 @@ pub async fn bird_query(server: &str, command: &str) -> Result<String> {
         }
     }
 
-    let response = request.send().await?;
-
-    if response.status().is_success() {
-        Ok(response.text().await?)
-    } else {
-        Err(anyhow!("HTTP error: {}", response.status()))
-    }
+    read_proxy_response(request.send().await?).await
 }
 
 pub async fn traceroute_query(server: &str, target: &str) -> Result<String> {
@@ -83,12 +77,24 @@ pub async fn traceroute_query(server: &str, target: &str) -> Result<String> {
         }
     }
 
-    let response = request.send().await?;
+    read_proxy_response(request.send().await?).await
+}
 
-    if response.status().is_success() {
-        Ok(response.text().await?)
+async fn read_proxy_response(response: reqwest::Response) -> Result<String> {
+    let status = response.status();
+    let body = response
+        .text()
+        .await
+        .map_err(|error| anyhow!("Could not read proxy response (HTTP {}): {}", status, error))?;
+    if status.is_success() {
+        Ok(body)
+    } else if body.trim().is_empty() {
+        Err(anyhow!(
+            "Proxy returned HTTP {} with an empty error response",
+            status
+        ))
     } else {
-        Err(anyhow!("HTTP error: {}", response.status()))
+        Err(anyhow!("{} (HTTP {})", body.trim(), status))
     }
 }
 
@@ -105,6 +111,39 @@ mod tests {
         assert_eq!(
             proxy_url("proxy.example", 8000, "traceroute"),
             "http://proxy.example:8000/traceroute"
+        );
+    }
+
+    #[tokio::test]
+    async fn proxy_errors_keep_the_explanation_and_success_output_is_unchanged() {
+        use axum::http::{Response, StatusCode};
+
+        let response = Response::builder()
+            .status(StatusCode::SERVICE_UNAVAILABLE)
+            .body("Traceroute is unavailable on this node.\n")
+            .unwrap();
+        let error = read_proxy_response(response.into()).await.unwrap_err();
+        assert_eq!(
+            error.to_string(),
+            "Traceroute is unavailable on this node. (HTTP 503 Service Unavailable)"
+        );
+
+        let response = Response::builder()
+            .status(StatusCode::BAD_GATEWAY)
+            .body("")
+            .unwrap();
+        assert_eq!(
+            read_proxy_response(response.into())
+                .await
+                .unwrap_err()
+                .to_string(),
+            "Proxy returned HTTP 502 Bad Gateway with an empty error response"
+        );
+
+        let response = Response::new("  original output\n\n");
+        assert_eq!(
+            read_proxy_response(response.into()).await.unwrap(),
+            "  original output\n\n"
         );
     }
 }

@@ -1,14 +1,18 @@
 use crate::Args;
 use anyhow::Result;
 use regex::Regex;
+use std::collections::HashMap;
 use std::fmt;
 use std::sync::OnceLock;
 use tracing::{debug, info};
 
 #[derive(Clone)]
 pub struct Settings {
+    // Configured identifiers are kept separate from resolved proxy addresses.
+    pub server_ids: Vec<String>,
     pub servers: Vec<String>,
     pub servers_display: Vec<String>,
+    server_aliases: HashMap<String, usize>,
     #[allow(dead_code)]
     pub domain: String,
     pub proxy_port: u16,
@@ -22,7 +26,6 @@ pub struct Settings {
     pub navbar_brand: String,
     pub navbar_brand_url: String,
     pub navbar_all_server: String,
-    #[allow(dead_code)]
     pub navbar_all_url: String,
     #[allow(dead_code)]
     pub bgpmap_info: String,
@@ -38,6 +41,7 @@ pub struct Settings {
 impl fmt::Debug for Settings {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Settings")
+            .field("server_ids", &self.server_ids)
             .field("servers", &self.servers)
             .field("servers_display", &self.servers_display)
             .field("domain", &self.domain)
@@ -91,6 +95,9 @@ fn parse_server_spec(server_spec: &str) -> Result<(String, String, bool)> {
     if display_name.contains('+') {
         anyhow::bail!("Server display name cannot contain '+': {}", display_name);
     }
+    if actual.contains('+') {
+        anyhow::bail!("Server identifier cannot contain '+': {}", actual);
+    }
 
     Ok((display_name, actual, explicit_display))
 }
@@ -131,6 +138,7 @@ impl Settings {
         };
 
         // Parse servers with display names
+        let mut server_ids = Vec::new();
         let mut servers = Vec::new();
         let mut servers_display = Vec::new();
         let mut explicit_display_names = Vec::new();
@@ -152,6 +160,7 @@ impl Settings {
                 display_name, actual
             );
             servers_display.push(display_name);
+            server_ids.push(actual.clone());
             servers.push(actual);
             explicit_display_names.push(explicit_display);
         }
@@ -200,6 +209,17 @@ impl Settings {
             }
         }
 
+        let mut server_aliases = HashMap::new();
+        for index in 0..servers.len() {
+            for alias in [&server_ids[index], &servers_display[index], &servers[index]] {
+                if let Some(previous) = server_aliases.insert(alias.clone(), index) {
+                    if previous != index {
+                        anyhow::bail!("Ambiguous server identifier: {}", alias);
+                    }
+                }
+            }
+        }
+
         debug!("After domain processing - servers: {:?}", servers);
         debug!(
             "After domain processing - servers_display: {:?}",
@@ -207,16 +227,22 @@ impl Settings {
         );
 
         Ok(Settings {
+            server_ids,
             servers,
             servers_display,
+            server_aliases,
             domain: args.domain,
             proxy_port: args.proxy_port,
             whois_server: args.whois,
             listen: args.listen,
             dns_interface: args.dns_interface,
             net_specific_mode: args.net_specific_mode,
+            navbar_brand: if args.navbar_brand.is_empty() {
+                args.title_brand.clone()
+            } else {
+                args.navbar_brand
+            },
             title_brand: args.title_brand,
-            navbar_brand: args.navbar_brand,
             navbar_brand_url: args.navbar_brand_url,
             navbar_all_server: args.navbar_all_servers,
             navbar_all_url: args.navbar_all_url,
@@ -243,22 +269,12 @@ impl Settings {
         server.to_string()
     }
 
-    #[allow(dead_code)]
-    pub fn all_servers_string(&self) -> String {
-        self.servers.join("+")
+    pub fn all_server_ids(&self) -> String {
+        self.server_ids.join("+")
     }
 
-    pub fn all_servers_display_string(&self) -> String {
-        self.servers_display.join("+")
-    }
-
-    pub fn get_server_from_display_name(&self, display_name: &str) -> Option<String> {
-        for (i, display) in self.servers_display.iter().enumerate() {
-            if display == display_name {
-                return Some(self.servers[i].clone());
-            }
-        }
-        None
+    pub fn get_server_id(&self, server: &str) -> &str {
+        &self.server_ids[self.server_aliases[server]]
     }
 
     pub fn resolve_servers_from_display_names(&self, display_names: &str) -> Result<Vec<String>> {
@@ -268,18 +284,11 @@ impl Settings {
 
         let servers = display_names
             .split('+')
-            .map(|display_name| {
-                // First try to find by display name
-                if let Some(server) = self.get_server_from_display_name(display_name) {
-                    Ok(server)
-                } else {
-                    // If not found by display name, check if it's already a server name
-                    if self.servers.iter().any(|server| server == display_name) {
-                        Ok(display_name.to_string())
-                    } else {
-                        anyhow::bail!("Unknown server: {}", display_name)
-                    }
-                }
+            .map(|name| {
+                self.server_aliases
+                    .get(name)
+                    .map(|&index| self.servers[index].clone())
+                    .ok_or_else(|| anyhow::anyhow!("Unknown server: {}", name))
             })
             .collect::<Result<Vec<_>>>()?;
 
@@ -294,7 +303,7 @@ impl Settings {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use clap::Parser;
+    use crate::test_args;
 
     #[test]
     fn server_specs_require_complete_unambiguous_aliases() {
@@ -329,33 +338,89 @@ mod tests {
 
     #[test]
     fn explicit_aliases_survive_domain_processing_and_duplicates_fail() {
-        let settings = Settings::from_args(
-            Args::try_parse_from([
-                "bird-lg-rs",
-                "--servers=Display<edge.example>",
-                "--domain=example",
-            ])
-            .unwrap(),
-        )
+        let settings = Settings::from_args(test_args(&[
+            "bird-lg-rs",
+            "--servers=Display<edge.example>",
+            "--domain=example",
+        ]))
         .unwrap();
         assert_eq!(settings.servers, ["edge.example"]);
         assert_eq!(settings.servers_display, ["Display"]);
 
-        let error = Settings::from_args(
-            Args::try_parse_from(["bird-lg-rs", "--servers=edge,edge"]).unwrap(),
-        )
-        .unwrap_err();
+        let error =
+            Settings::from_args(test_args(&["bird-lg-rs", "--servers=edge,edge"])).unwrap_err();
         assert_eq!(error.to_string(), "Duplicate server display name: edge");
 
-        let error = Settings::from_args(
-            Args::try_parse_from([
-                "bird-lg-rs",
-                "--servers=edge,edge.example",
-                "--domain=example",
-            ])
-            .unwrap(),
-        )
+        let error = Settings::from_args(test_args(&[
+            "bird-lg-rs",
+            "--servers=edge,edge.example",
+            "--domain=example",
+        ]))
         .unwrap_err();
         assert_eq!(error.to_string(), "Duplicate server display name: edge");
+    }
+
+    #[test]
+    fn upstream_ids_and_legacy_names_resolve_to_the_same_configured_proxy() {
+        let settings = Settings::from_args(test_args(&[
+            "bird-lg-rs",
+            "--servers=上海<edge>,Core<core>",
+            "--domain=example.net",
+        ]))
+        .unwrap();
+        assert_eq!(settings.server_ids, ["edge", "core"]);
+        assert_eq!(settings.servers, ["edge.example.net", "core.example.net"]);
+        assert_eq!(settings.all_server_ids(), "edge+core");
+        for names in [
+            "edge+core",
+            "上海+Core",
+            "edge.example.net+core.example.net",
+        ] {
+            assert_eq!(
+                settings.resolve_servers_from_display_names(names).unwrap(),
+                settings.servers
+            );
+        }
+        assert_eq!(settings.get_server_id("edge.example.net"), "edge");
+        assert!(settings
+            .resolve_servers_from_display_names("unknown")
+            .is_err());
+        assert!(settings.resolve_servers_from_display_names("").is_err());
+    }
+
+    #[test]
+    fn identifiers_cannot_collide_with_another_nodes_old_links() {
+        for spec in [
+            "first<edge>,edge<core>",
+            "first<edge>,second<edge>",
+            "Display<edge+core>",
+        ] {
+            assert!(
+                Settings::from_args(test_args(&["bird-lg-rs", &format!("--servers={spec}")]))
+                    .is_err(),
+                "accepted {spec}"
+            );
+        }
+        assert!(Settings::from_args(test_args(&[
+            "bird-lg-rs",
+            "--servers=first<edge>,edge.example.net<core>",
+            "--domain=example.net",
+        ]))
+        .is_err());
+    }
+
+    #[test]
+    fn navbar_brand_inherits_the_configured_title_unless_overridden() {
+        for (navbar, expected) in [("", "Example LG"), ("Example Network", "Example Network")] {
+            let settings = Settings::from_args(test_args(&[
+                "bird-lg-rs",
+                "--servers=edge",
+                "--title-brand=Example LG",
+                &format!("--navbar-brand={navbar}"),
+            ]))
+            .unwrap();
+            assert_eq!(settings.navbar_brand, expected);
+            assert_eq!(settings.navbar_all_server, "All Servers");
+        }
     }
 }

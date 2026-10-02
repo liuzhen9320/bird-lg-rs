@@ -22,13 +22,13 @@
 	<div class="collapse navbar-collapse" id="navbarSupportedContent">
 		<ul class="navbar-nav mr-auto">
 			<li class="nav-item">
-				<a class="nav-link{% if all_servers_link_active %} active{% endif %}"
-					href="/summary/{{ all_servers_url }}/"> {{ all_server_title }} </a>
+				<a class="nav-link{% if all_servers.active %} active{% endif %}"
+					href="{{ all_servers.href }}"> {{ all_servers.label }} </a>
 			</li>
 			{% for server in servers %}
 			<li class="nav-item">
-				<a class="nav-link{% if url_server == server %} active{% endif %}"
-					href="/summary/{{ server }}/">{{ servers_display[loop.index0] }}</a>
+				<a class="nav-link{% if server.active %} active{% endif %}"
+					href="{{ server.href }}">{{ server.label }}</a>
 			</li>
 			{% endfor %}
 		</ul>
@@ -36,7 +36,7 @@
 			<div class="input-group">
 				<select name="action" class="form-control">
 					{% for option in options %}
-					<option value="{{ option.0 }}"{% if option.0 == url_option %} selected{% endif %}>{{ option.1 }}</option>
+					<option value="{{ option.action }}"{% if option.action == url_option %} selected{% endif %}>{{ option.label }}</option>
 					{% endfor %}
 				</select>
 				<input name="server" class="d-none" value="{{ url_server }}">

@@ -179,7 +179,12 @@ async fn traceroute_handler(
         Ok(output) => Ok(output),
         Err(e) => {
             warn!("Traceroute command failed: {}", e);
-            Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+            let status = if e.is::<traceroute::TracerouteUnavailable>() {
+                StatusCode::SERVICE_UNAVAILABLE
+            } else {
+                StatusCode::INTERNAL_SERVER_ERROR
+            };
+            Err((status, e.to_string()))
         }
     }
 }

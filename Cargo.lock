@@ -172,6 +172,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "mime_guess",
+ "percent-encoding",
  "regex",
  "reqwest",
  "rust-embed",

@@ -41,7 +41,7 @@
 			return;
 		}
 
-		const encodedServer = encodeURIComponent(server || "");
+		const encodedServer = (server || "").split("+").map(encodeURIComponent).join("+");
 		const encodedTarget = encodeURIComponent(target || "");
 		let url;
 

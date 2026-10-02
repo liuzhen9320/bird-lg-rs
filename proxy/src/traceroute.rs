@@ -28,6 +28,19 @@ struct ProcessOutput {
 static TRACEROUTE_CONFIG: OnceLock<Option<TracerouteConfig>> = OnceLock::new();
 static TRACEROUTE_SEMAPHORE: OnceLock<Semaphore> = OnceLock::new();
 
+#[derive(Debug)]
+pub struct TracerouteUnavailable;
+
+impl std::fmt::Display for TracerouteUnavailable {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(
+            "Traceroute is unavailable on this node: no working traceroute or mtr executable was found. Ask the node administrator to install or configure one, then restart the proxy.",
+        )
+    }
+}
+
+impl std::error::Error for TracerouteUnavailable {}
+
 /// Convert command and args to string for display
 fn args_to_string(cmd: &str, args: &[String], target: &[String]) -> String {
     let mut combined = vec![cmd.to_string()];
@@ -300,7 +313,7 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         .get()
         .ok_or_else(|| anyhow!("Traceroute not initialized"))?
         .as_ref()
-        .ok_or_else(|| anyhow!("Traceroute not supported on this node"))?;
+        .ok_or(TracerouteUnavailable)?;
 
     let semaphore = TRACEROUTE_SEMAPHORE
         .get()
@@ -329,7 +342,18 @@ pub async fn execute_traceroute(query: &str) -> Result<String> {
         timeout_duration,
         settings.traceroute_max_output_bytes,
     )
-    .await?;
+    .await
+    .map_err(|error| {
+        // The executable may have been removed after startup detection.
+        if error
+            .downcast_ref::<std::io::Error>()
+            .is_some_and(|error| error.kind() == std::io::ErrorKind::NotFound)
+        {
+            anyhow!(TracerouteUnavailable)
+        } else {
+            error
+        }
+    })?;
 
     if output.status.success() {
         let output_str = String::from_utf8_lossy(&output.stdout);

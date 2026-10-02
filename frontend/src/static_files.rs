@@ -7,13 +7,22 @@ use axum::{
 };
 
 pub async fn serve_static(Path(path): Path<String>) -> impl IntoResponse {
-    // 从path中移除开头的斜杠（如果有的话），并添加static/前缀
     let clean_path = path.strip_prefix('/').unwrap_or(&path);
-    let full_path = format!("static/{}", clean_path);
+    asset_response(&format!("static/{}", clean_path))
+}
 
-    match StaticAssets::get(&full_path) {
+pub async fn favicon() -> Response {
+    asset_response("favicon.ico")
+}
+
+pub async fn robots() -> Response {
+    asset_response("robots.txt")
+}
+
+fn asset_response(path: &str) -> Response {
+    match StaticAssets::get(path) {
         Some(content) => {
-            let mime = mime_guess::from_path(clean_path).first_or_octet_stream();
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
             Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, mime.as_ref())

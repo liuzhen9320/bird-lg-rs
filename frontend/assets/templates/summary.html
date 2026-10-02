@@ -7,7 +7,7 @@
   <tbody>
 {% for row in rows %}
     <tr class="table-{{ row.mapped_state }}">
-      <td><a href="/detail/{{ server_name | urlencode }}/{{ row.name | urlencode }}">{{ row.name | escape }}</a></td>
+      <td><a href="{{ row.detail_url }}">{{ row.name | escape }}</a></td>
       <td>{{ row.proto | escape }}</td>
       <td>{{ row.table | escape }}</td>
       <td>{{ row.state | escape }}</td>
